@@ -73,10 +73,6 @@ There is an option to only create one file for each level and keep things a litt
 > custom_logger("/tmp/log_test";  
     create_log_files=false, overwrite=true, log_format = :log4j);
 
-┌ [08:37:03 2025-02-12] INFO  |  @ Prototypes[/Users/loulou/Dropbox/projects_code/julia_packages/Prototypes/src/CustomLogger.jl:44]
-│ Only one sink provided ...
-└   All logs will be written without differentiation on /tmp/log_test
-
 > @error "This is an error level message" 
 > @warn "This is an warn level message"
 > @info "This is an info level message"

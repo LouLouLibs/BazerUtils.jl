@@ -45,12 +45,12 @@ deploydocs(;
 
 
 # deploydocs(;
-#     repo = "github.com/eloualiche/Prototypes.jl",
+#     repo = "github.com/eloualiche/BazerUtils.jl",
 #     devbranch = "build",
 # )
 
 # deploydocs(;
-#     repo = "github.com/eloualiche/Prototypes.jl",
+#     repo = "github.com/eloualiche/BazerUtils.jl",
 #     target = "build",
 #     branch = "gh-pages",
 # )

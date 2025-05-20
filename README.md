@@ -1,6 +1,11 @@
-# Prototypes
+# BazerUtils.jl
 
-[![Lifecycle:Experimental](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/eloualiche/Prototypes.jl/actions/workflows/CI.yml)
+
+[![CI](https://github.com/eloualiche/BazerUtils.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/eloualiche/BazerUtils.jl/actions/workflows/CI.yml)
+[![Lifecycle:Experimental](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/eloualiche/BazerUtils.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/eloualiche/BazerUtils.jl/graph/badge.svg?token=53QO3HSSRT)](https://codecov.io/gh/eloualiche/BazerUtils.jl)
+
+
 
 `BazerUtils.jl` is a package that assembles various functionality that I use on a frequent basis in julia.
 It is a more mature version of [`Prototypes.jl`](https://github.com/eloualiche/Prototypes.jl) where I try a bunch of things out (there is overlap).
