@@ -1,10 +1,12 @@
 #!/usr/bin/env julia
 
 
-push!(LOAD_PATH, "../src/")
+# push!(LOAD_PATH, "../src/")
 # import Pkg; Pkg.develop("../src")
 # locally : julia --color=yes --project make.jl
 
+
+# --------------------------------------------------------------------------------------------------
 # -- 
 using BazerUtils
 using Documenter
@@ -42,16 +44,4 @@ deploydocs(;
     branch = "gh-pages",
     push_preview = true,
 )
-
-
-# deploydocs(;
-#     repo = "github.com/eloualiche/BazerUtils.jl",
-#     devbranch = "build",
-# )
-
-# deploydocs(;
-#     repo = "github.com/eloualiche/BazerUtils.jl",
-#     target = "build",
-#     branch = "gh-pages",
-# )
-
+# --------------------------------------------------------------------------------------------------
