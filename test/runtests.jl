@@ -1,6 +1,27 @@
+# --------------------------------------------------------------------------------------------------
 using BazerUtils
 using Test
 
-@testset "BazerUtils.jl" begin
-    # Write your tests here.
+import Logging: global_logger
+import LoggingExtras: ConsoleLogger, TeeLogger
+import HTTP
+
+const testsuite = [
+    "customlogger"
+]
+
+# --------------------------------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------------------------------
+printstyled("Running tests:\n", color=:blue, bold=true)
+
+@testset verbose=true "BazerUtils.jl" begin
+    for test in testsuite
+        println("\033[1m\033[32m  → RUNNING\033[0m: $(test)")
+        include("UnitTests/$test.jl")
+        println("\033[1m\033[32m  PASSED\033[0m")
+    end
 end
+# --------------------------------------------------------------------------------------------------
+
