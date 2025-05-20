@@ -41,7 +41,7 @@ The custom_logger function creates four files in `output_dir`for four different 
 Note that the default **overwrites** old log files (specify overwrite=false to avoid this).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/c4ca4911a3948de21205961170557dc870b3e84b/src/CustomLogger.jl#L72-L98" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/182662692b4c4de4cba46759cf9b6d09086d9821/src/CustomLogger.jl#L72-L98" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

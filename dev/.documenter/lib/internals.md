@@ -13,7 +13,7 @@ format_syslog
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/c4ca4911a3948de21205961170557dc870b3e84b/src/CustomLogger.jl#L459-L461" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/182662692b4c4de4cba46759cf9b6d09086d9821/src/CustomLogger.jl#L459-L461" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -29,7 +29,7 @@ reformat_msg
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/c4ca4911a3948de21205961170557dc870b3e84b/src/CustomLogger.jl#L362-L365" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/182662692b4c4de4cba46759cf9b6d09086d9821/src/CustomLogger.jl#L362-L365" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -83,7 +83,7 @@ julia> shorten_path_str("/home/user/documents/very_long_filename.txt", strategy=
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/c4ca4911a3948de21205961170557dc870b3e84b/src/CustomLogger.jl#L513-L543" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/eloualiche/BazerUtils.jl/blob/182662692b4c4de4cba46759cf9b6d09086d9821/src/CustomLogger.jl#L513-L543" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
