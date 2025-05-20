@@ -14,10 +14,14 @@ using DocumenterVitepress
 
 # -- 
 makedocs(
-    # format = Documenter.HTML(),
-    format = DocumenterVitepress.MarkdownVitepress(
-        repo = "https://github.com/eloualiche/BazerUtils.jl",
+    format = Documenter.HTML(
+        size_threshold = 512_000,          # KiB — raise above your largest file
+        size_threshold_warn = 256_000,     # optional
+        example_size_threshold = 200_000,  # bytes — for large @example blocks
     ),
+    # format = DocumenterVitepress.MarkdownVitepress(
+    #     repo = "https://github.com/eloualiche/BazerUtils.jl",
+    # ),
     repo = Remotes.GitHub("eloualiche", "BazerUtils.jl"),
     sitename = "BazerUtils.jl",
     modules  = [BazerUtils],
