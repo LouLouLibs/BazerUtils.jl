@@ -16,11 +16,13 @@ So far the package provides a one main function:
 
 ## Installation
 
-`BazerUtils.jl` is a not a registered package.
-You can install it from github  via
+`BazerUtils.jl` is a registered package. You can install from the main julia registry via the julia package manager
 ```julia
-import Pkg
-Pkg.add(url="https://github.com/eloualiche/BazerUtils.jl")
+> import Pkg; Pkg.add("BazerUtils.jl")
+# or in package mode in the REPL
+pkg> add BazerUtils 
+# or from the main github branch
+> import Pkg; Pkg.add("https://github.com/louloulibs/BazerUtils.jl#main")
 ```
 
 
@@ -58,6 +60,6 @@ custom_logger(
 
 
 See my other package 
-  - [BazerData.jl](https://github.com/eloualiche/BazerData.jl) which groups together data wrangling functions.
-  - [FinanceRoutines.jl](https://github.com/eloualiche/FinanceRoutines.jl) which is more focused and centered on working with financial data.
-  - [TigerFetch.jl](https://github.com/eloualiche/TigerFetch.jl) which simplifies downloading shape files from the Census.
+  - [BazerData.jl](https://github.com/louloulibs/BazerData.jl) which groups together data wrangling functions.
+  - [FinanceRoutines.jl](https://github.com/louloulibs/FinanceRoutines.jl) which is more focused and centered on working with financial data.
+  - [TigerFetch.jl](https://github.com/louloulibs/TigerFetch.jl) which simplifies downloading shape files from the Census.
