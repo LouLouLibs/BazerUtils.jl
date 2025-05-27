@@ -16,12 +16,16 @@ So far the package provides a one main function:
 
 ## Installation
 
-`BazerUtils.jl` is a registered package. You can install from the main julia registry via the julia package manager
+`BazerUtils.jl` is a registered package. 
+You can install from the my julia registry [`loulouJL`](https://github.com/LouLouLibs/loulouJL) via the julia package manager:
 ```julia
-> import Pkg; Pkg.add("BazerUtils.jl")
-# or in package mode in the REPL
-pkg> add BazerUtils 
-# or from the main github branch
+> using Pkg, LocalRegistry
+> pkg"registry add https://github.com/LouLouLibs/loulouJL.git"
+> Pkg.add("BazerUtils")
+```
+
+If you don't want to add a new registry, you can install it directly from github:
+```julia
 > import Pkg; Pkg.add("https://github.com/louloulibs/BazerUtils.jl#main")
 ```
 
