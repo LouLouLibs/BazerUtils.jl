@@ -10,8 +10,10 @@
 `BazerUtils.jl` is a package that assembles various functionality that I use on a frequent basis in julia.
 It is a more mature version of [`Prototypes.jl`](https://github.com/eloualiche/Prototypes.jl) where I try a bunch of things out (there is overlap).
 
-So far the package provides a one main function:
+So far the package provides a two sets of functions:
+    
     - [`custom_logger`](#custom-logging) is a custom logging output that builds on the standard julia logger
+    - [`read_jsonl`](#json-lines) provides utilities to read and write json-lines files
 
 
 ## Installation
