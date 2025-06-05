@@ -4,10 +4,13 @@ using Test
 
 import Logging: global_logger
 import LoggingExtras: ConsoleLogger, TeeLogger
+import JSON3
+import CodecZlib
 import HTTP
 
 const testsuite = [
-    "customlogger"
+    "customlogger",
+    "jsonlines"
 ]
 
 # --------------------------------------------------------------------------------------------------
@@ -24,4 +27,3 @@ printstyled("Running tests:\n", color=:blue, bold=true)
     end
 end
 # --------------------------------------------------------------------------------------------------
-
