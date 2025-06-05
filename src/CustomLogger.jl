@@ -456,9 +456,7 @@ const syslog_severity_map = Dict( # look at get color to get something nicer tha
 # ----- where are the binaries!
 const julia_bin = Base.julia_cmd().exec[1]
 
-"""
-    format_syslog
-"""
+
 function format_syslog(log_record::NamedTuple)::AbstractString
 
     timestamp = Dates.format(now(), ISODateTimeFormat)
