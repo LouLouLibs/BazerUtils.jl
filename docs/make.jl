@@ -53,6 +53,10 @@ deploydocs(;
     target = "build",
     branch = "gh-pages",
     devbranch = "main",  # or "master"
+    versions = [
+        "stable" => "0.8.0",
+        "dev" => "dev",
+    ],
 )
 
 
