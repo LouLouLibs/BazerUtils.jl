@@ -17,14 +17,14 @@ DocMeta.setdocmeta!(BazerUtils, :DocTestSetup, :(using BazerUtils);
 
 # --
 makedocs(
-    # format = Documenter.HTML(),
-    format = MarkdownVitepress(
-        repo = "https://github.com/LouLouLibs/BazerUtils.jl",
-        devurl = "dev",
-        devbranch = "build",
-        deploy_url = "LouLouLibs.github.io/BazerUtils.jl",
-        description = "BazerUtils.jl",
-    ),
+    format = Documenter.HTML(),
+    # format = MarkdownVitepress(
+    #     repo = "https://github.com/LouLouLibs/BazerUtils.jl",
+    #     devurl = "dev",
+    #     devbranch = "build",
+    #     deploy_url = "LouLouLibs.github.io/BazerUtils.jl",
+    #     description = "BazerUtils.jl",
+    # ),
     sitename = "BazerUtils.jl",
     modules  = [BazerUtils],
     authors = "Erik Loualiche",
