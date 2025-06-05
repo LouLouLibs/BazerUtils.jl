@@ -19,16 +19,16 @@ DocMeta.setdocmeta!(BazerUtils, :DocTestSetup, :(using BazerUtils);
 makedocs(
     # format = Documenter.HTML(),
     format = MarkdownVitepress(
-        repo = "https://github.com/louloulibs/BazerUtils.jl",
+        repo = "https://github.com/LouLouLibs/BazerUtils.jl",
         devurl = "dev",
         devbranch = "build",
-        deploy_url = "louloulibs.github.io/BazerUtils.jl",
+        deploy_url = "LouLouLibs.github.io/BazerUtils.jl",
         description = "BazerUtils.jl",
     ),
     sitename = "BazerUtils.jl",
     modules  = [BazerUtils],
     authors = "Erik Loualiche",
-    repo = Remotes.GitHub("louloulibs", "BazerUtils.jl"),
+    repo = Remotes.GitHub("LouLouLibs", "BazerUtils.jl"),
     pages=[
         "Home" => "index.md",
         "Manual" => [
@@ -44,12 +44,12 @@ makedocs(
 
 
 deploydocs(
-    repo="github.com/louloulibs/BazerUtils.jl",
+    repo="github.com/LouLouLibs/BazerUtils.jl",
     target = "build",
 )
 
 deploydocs(;
-    repo="github.com/louloulibs/BazerUtils.jl",
+    repo="github.com/LouLouLibs/BazerUtils.jl",
     target = "build",
     branch = "gh-pages",
     devbranch = "main",  # or "master"
