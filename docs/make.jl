@@ -7,12 +7,12 @@
 
 
 # --------------------------------------------------------------------------------------------------
-# -- 
+# --
 using BazerUtils
 using Documenter
 using DocumenterVitepress
 
-# -- 
+# --
 makedocs(
     format = Documenter.HTML(
         size_threshold = 512_000,          # KiB — raise above your largest file
@@ -30,6 +30,7 @@ makedocs(
         "Home" => "index.md",
         "Manual" => [
             "man/logger_guide.md",
+            "man/read_jsonl.md",
         ],
         # "Demos" => [
         # ],
