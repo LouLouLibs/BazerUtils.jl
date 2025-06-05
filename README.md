@@ -60,6 +60,11 @@ custom_logger(
 ```
 
 
+### JSON Lines
+
+A easy way to read json lines files into julia leaning on `JSON3` reader.
+
+
 ## Other stuff
 
 

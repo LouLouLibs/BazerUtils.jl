@@ -9,5 +9,6 @@ docs/node_modules
 docs/.DS_Store
 .env
 .env.gpg
+.vscode
 # ---------------------------------------------------------
 

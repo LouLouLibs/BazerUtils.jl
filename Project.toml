@@ -1,24 +1,26 @@
 name = "BazerUtils"
 uuid = "36dcebb2-80bb-4116-91f4-ed9f396c4a1c"
 authors = ["Erik Loualiche"]
-version = "0.7.1"
+version = "0.8.0"
 
 [deps]
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 
 [compat]
+CodecZlib = "0.7.8"
 Dates = "1.11.0"
+JSON3 = "1.14.3"
 Logging = "1.11.0"
 LoggingExtras = "1.1.0"
 julia = "1.6.7"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "HTTP"]
-
