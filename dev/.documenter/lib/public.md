@@ -41,7 +41,7 @@ The custom_logger function creates four files in `output_dir`for four different 
 Note that the default **overwrites** old log files (specify overwrite=false to avoid this).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/b22675888ad7af975c9597aa5a1da4df67626d3e/src/CustomLogger.jl#L72-L98" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fdf0d2faaa8ab1e2b0b3cf604433a205f9db8a77/src/CustomLogger.jl#L72-L98" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -100,7 +100,7 @@ println("First record ID: ", first_record.id)
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/b22675888ad7af975c9597aa5a1da4df67626d3e/src/JSONLines.jl#L16-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fdf0d2faaa8ab1e2b0b3cf604433a205f9db8a77/src/JSONLines.jl#L16-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -131,7 +131,7 @@ write_jsonl("out.jsonl.gz", (Dict("i"=>i) for i in 1:10^6))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/b22675888ad7af975c9597aa5a1da4df67626d3e/src/JSONLines.jl#L172-L187" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fdf0d2faaa8ab1e2b0b3cf604433a205f9db8a77/src/JSONLines.jl#L172-L187" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
