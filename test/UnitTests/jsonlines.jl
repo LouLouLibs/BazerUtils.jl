@@ -67,6 +67,12 @@
     @test collect(stream_jsonl(empty_file)) == []
     @test !isopen(stream)
 
+    # Test wrong types
+    stream = stream_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n[1,2,3]"))
+    @test_throws TaskFailedException collect(stream)
+    stream = stream_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n[1,2,3]"), T=Any)
+    @test collect(stream)[3] == [1,2,3]
+
     rm(jsonl_file)
     rm(empty_file)
 end
@@ -93,6 +99,9 @@ end
     @test results[2]["y"] == "qux"
     @test results[3]["x"] == 30
     @test results[3]["y"] == "zap"
+
+    results = read_jsonl(jsonl_file; dict_of_json=true)
+    @test results isa Vector{Dict{Symbol, Any}}
 
     # Test with empty file
     empty_file = tempname()
@@ -136,7 +145,7 @@ end
 
         # Stream and collect
         seekstart(buf)
-        streamed = collect(stream_jsonl(buf))
+        streamed = collect(stream_jsonl(buf, T=Any))
         @test streamed == data
     end
 

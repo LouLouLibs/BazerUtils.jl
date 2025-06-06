@@ -54,7 +54,7 @@ deploydocs(;
     branch = "gh-pages",
     devbranch = "main",  # or "master"
     versions = [
-        "stable" => "0.8.1",
+        "stable" => "0.8.2",
         "dev" => "dev",
     ],
 )

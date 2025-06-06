@@ -32,11 +32,15 @@ You can use the `read_jsonl` and `stream_jsonl` functions to read JSONL files or
 Reads the entire file or stream into memory and returns a vector of parsed JSON values.
 
 ```julia
+using BazerUtils
+import JSON3
 data = read_jsonl("data.jsonl")
 # or from an IOBuffer
-buf = IOBuffer("{\"a\": 1}\n{\"a\": 2}\n")
-data = read_jsonl(buf)
+buf = 
+data = read_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n"))
+data = read_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n"); dict_of_json=true)
 ```
+
 
 - **Arguments:** `source::Union{AbstractString, IO}`
 - **Returns:** `Vector` of parsed JSON values
@@ -44,18 +48,33 @@ data = read_jsonl(buf)
 
 ---
 
+
 ### `stream_jsonl`
 
 Creates a lazy iterator (Channel) that yields one parsed JSON value at a time, without loading the entire file into memory.
 
 ```julia
-for record in stream_jsonl("data.jsonl")
-    println(record)
-end
+stream = stream_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n"))
+data = collect(stream)
+BazerUtils._dict_of_json3.(data)
 
-# Collect the first 10 records
-first10 = collect(Iterators.take(stream_jsonl("data.jsonl"), 10))
+stream = stream_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n[1,2,3]"))
+collect(stream) # error because types of vector elements are not all JSON3.Object{}
+stream = stream_jsonl(IOBuffer("{\"a\": 1}\n{\"a\": 2}\n[1,2,3]"), T=Any)
+collect(stream) # default to Vector{Any}
+
+stream = stream_jsonl(IOBuffer("[4,5,6]\n[1,2,3]"), T= JSON3.Array{})
+collect(stream)
+stream = stream_jsonl(IOBuffer("4\n1"), T=Int)
+collect(stream)
 ```
+
+Allows iterators
+```julia
+first10 = collect(Iterators.take(stream_jsonl("data.jsonl"), 10)) # Collect the first 10 records
+# see tests for other iterators ...
+```
+
 
 - **Arguments:** `source::Union{AbstractString, IO}`
 - **Returns:** `Channel` (iterator) of parsed JSON values
@@ -83,18 +102,24 @@ write_jsonl("out.jsonl.gz", (Dict("i"=>i) for i in 1:100); compress=true)
 
 ## Example: Roundtrip with IOBuffer
 
-Note that there is no stable roundtrip between read and write, because of the way `JSON3` processes record into dictionaries. 
+Note that there is no stable roundtrip between read and write, because of the way `JSON3` processes record into dictionaries and even when we add the dict flag it is `Symbol => Any`
 
 ```julia
-data = [Dict("a"=>1), Dict("b"=>2)]
-buf = IOBuffer()
-for obj in data
-    JSON3.write(buf, obj)
-    write(buf, '\n')
+data_string = [Dict("a"=>1), Dict("b"=>2)]
+data_symbol = [Dict(:a=>1), Dict(:b=>2)]
+
+function roundtrip(data)
+    buf = IOBuffer()
+    for obj in data
+        JSON3.write(buf, obj)
+        write(buf, '\n')
+    end
+    seekstart(buf)
+    return read_jsonl(buf; dict_of_json=true)
 end
-seekstart(buf)
-read_data = read_jsonl(buf)
-@assert read_data == data
+
+roundtrip(data_string) == data_string
+roundtrip(data_symbol) == data_symbol
 ```
 
 ---

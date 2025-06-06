@@ -14,7 +14,7 @@
 
 # --------------------------------------------------------------------------------------------------
 """
-    read_jsonl(source::Union{AbstractString, IO}) -> Vector
+    read_jsonl(source::Union{AbstractString, IO}; dict_of_json::Bool=false) -> Vector
 
 Read a JSON Lines (.jsonl) file or stream and return all records as a vector.
 
@@ -23,6 +23,7 @@ JSON value. Empty lines are automatically skipped.
 
 # Arguments
 - `source::Union{AbstractString, IO}`: Path to the JSON Lines file to read, or an IO stream (e.g., IOBuffer, file handle).
+- `dict_of_json::Bool=false`: If `true` and the parsed type is `JSON3.Object`, convert each record to a `Dict{Symbol,Any}`.
 
 # Returns
 - `Vector`: A vector containing all parsed JSON values from the file or stream.
@@ -36,6 +37,9 @@ data = read_jsonl("data.jsonl")
 buf = IOBuffer("$(JSON3.write(Dict(:a=>1)))\n$(JSON3.write(Dict(:a=>2)))\n")
 data = read_jsonl(buf)
 
+# Convert JSON3.Object records to Dict
+data = read_jsonl("data.jsonl"; dict_of_json=true)
+
 # Access individual records
 first_record = data[1]
 println("First record ID: ", first_record.id)
@@ -46,26 +50,38 @@ println("First record ID: ", first_record.id)
 - For large files, consider using `stream_jsonl()` for streaming processing.
 - The function will throw an error if the JSON on any line is malformed.
 - The path must refer to an existing regular file.
+- If `dict_of_json=true`, all records must be of type `JSON3.Object`.
 
 # See Also
 - [`stream_jsonl`](@ref): For memory-efficient streaming of large JSONL files.
 """
-function read_jsonl(io::IO)
-    results = []
-    for line in eachline(io)
-        if !isempty(strip(line))
-            push!(results, JSON3.read(line))
-        end
+function read_jsonl(io::IO; dict_of_json::Bool=false)
+    lines = collect(eachline(io))
+    nonempty_lines = filter(l -> !isempty(strip(l)), lines)
+    isempty(nonempty_lines) && return []
+
+    first_val = JSON3.read(nonempty_lines[1])
+    T = typeof(first_val)
+    results = Vector{T}(undef, length(nonempty_lines))
+    results[1] = first_val
+
+    for (i, line) in enumerate(nonempty_lines[2:end])
+        results[i+1] = JSON3.read(line)
     end
+    @show T
+    if dict_of_json && T <: JSON3.Object{}
+        results = [_dict_of_json3(r) for r in results]
+    end
+
     return results
 end
 
-function read_jsonl(filename::AbstractString)
+function read_jsonl(filename::AbstractString; kwargs...)
     if !isfile(filename)
         throw(ArgumentError("File does not exist or is not a regular file: $filename"))
     end
     open(filename, "r") do io
-        return read_jsonl(io)
+        return read_jsonl(io; kwargs...)
     end
 end
 # --------------------------------------------------------------------------------------------------
@@ -75,25 +91,27 @@ end
 # Using lazy evaluation with generators
 # For very large files, you can create a generator that yields records on demand:
 """
-    stream_jsonl(source::Union{AbstractString, IO}) -> Channel
+    stream_jsonl(source::Union{AbstractString, IO}; T::Type=JSON3.Object{}) -> Channel
 
-Create a lazy iterator for reading JSON Lines files record by record.
+Create a lazy iterator (Channel) for reading JSON Lines files record by record.
 
 This function returns a Channel that yields JSON objects one at a time without loading
 the entire file into memory. This is memory-efficient for processing large JSONL files.
+Each parsed record is checked to match the specified type `T` (default: `JSON3.Object{}`).
+If a record does not match `T`, an error is thrown.
 
 # Arguments
 - `source::Union{AbstractString, IO}`: Path to the JSON Lines file to read, or an IO stream (e.g., IOBuffer, file handle).
+- `T::Type=JSON3.Object{}`: The expected type for each parsed record. Use `T=Any` to allow mixed types.
 
 # Returns
-- `Channel`: A channel that yields parsed JSON objects one at a time
+- `Channel{T}`: A channel that yields parsed JSON objects one at a time.
 
 # Examples
 ```julia
 # Process records one at a time (memory efficient)
 for record in stream_jsonl("large_file.jsonl")
     println("Processing record: ", record.id)
-    # Process each record without loading all into memory
 end
 
 # Collect first N records
@@ -107,60 +125,55 @@ buf = IOBuffer("$(JSON3.write(Dict(:a=>1)))\n$(JSON3.write(Dict(:a=>2)))\n")
 for record in stream_jsonl(buf)
     @show record
 end
+
+# Allow mixed types
+for record in stream_jsonl("data.jsonl"; T=Any)
+    @show record
+end
 ```
 
 # Notes
-- This is a lazy iterator - records are only read and parsed when requested
-- Memory usage remains constant regardless of file size
-- Empty lines are automatically skipped
-- The Channel is automatically closed when the file or stream is fully read or an error occurs
-- If JSON parsing fails on any line, the Channel will close and propagate the error
-
-# Performance
-- More memory efficient than `read_jsonl()` for large files
-- Slightly slower per-record access due to Channel overhead
-- Ideal for streaming processing workflows
+- This is a lazy iterator: records are only read and parsed when requested.
+- Memory usage remains constant regardless of file size.
+- Empty lines are automatically skipped.
+- The Channel is automatically closed when the file or stream is fully read or an error occurs.
+- If JSON parsing fails on any line, the Channel will close and propagate the error.
+- For file paths, the file remains open for the lifetime of the channel.
+- For IO streams, the user is responsible for keeping the IO open while consuming the channel.
+- If a parsed record does not match `T`, an error is thrown. Use `T=Any` to allow mixed types.
 
 # See Also
-- [`read_jsonl`](@ref): For loading entire JSONL files into memory at once
+- [`read_jsonl`](@ref): For loading entire JSONL files into memory at once.
 """
-
-# function stream_jsonl(io::IO)
-#     Channel() do ch
-#         for line in eachline(io)
-#             println("LINE: ", line)
-#             if !isempty(strip(line))
-#                 try
-#                     put!(ch, JSON3.read(line))
-#                 catch e
-#                     @warn "Failed to parse JSON line: $line" exception=e
-#                 end
-#             end
-#         end
-#     end
-# end
-
-function stream_jsonl(io::IO)
-    Channel() do ch
-        for line in eachline(io)
-            if !isempty(strip(line))
-                put!(ch, JSON3.read(line))
+function stream_jsonl(io::IO; T::Type=JSON3.Object{})
+    lines = Iterators.filter(l -> !isempty(strip(l)), eachline(io))
+    return Channel{T}() do ch
+        for line in lines
+            val = JSON3.read(line)
+            if !isa(val, T)
+                throw(ArgumentError("Parsed value of type $(typeof(val)) does not match expected type $T;\nTry specifying T::Any"))
             end
+            put!(ch, val)
         end
     end
 end
 
 
-function stream_jsonl(filename::AbstractString)
+function stream_jsonl(filename::AbstractString; T::Type=JSON3.Object{})
     if !isfile(filename)
         throw(ArgumentError("File does not exist or is not a regular file: $filename"))
     end
-    Channel() do ch
+    return Channel{T}() do ch
         open(filename, "r") do io
             for line in eachline(io)
-                if !isempty(strip(line))
-                    put!(ch, JSON3.read(line))
+                if isempty(strip(line))
+                    continue
                 end
+                val = JSON3.read(line)
+                if !isa(val, T)
+                    throw(ArgumentError("Parsed value of type $(typeof(val)) does not match expected type $T"))
+                end
+                put!(ch, val)
             end
         end
     end
@@ -207,10 +220,23 @@ end
 
 
 # --------------------------------------------------------------------------------------------------
-# not exported
-# d = read_data[1]
-# d isa JSON3.Object{}
+"""
+    _dict_of_json3(obj::JSON3.Object) -> Dict{Symbol, Any}
 
+Recursively convert a `JSON3.Object` (from JSON3.jl) into a standard Julia `Dict` with `Symbol` keys.
+
+This function traverses the input `JSON3.Object`, converting all keys to `Symbol` and recursively converting any nested `JSON3.Object` values. Non-object values are left unchanged.
+
+# Arguments
+- `obj::JSON3.Object`: The JSON3 object to convert.
+
+# Returns
+- `Dict{Symbol, Any}`: A Julia dictionary with symbol keys and values converted recursively.
+
+# Notes
+- This function is intended for internal use and is not exported.
+- Useful for converting parsed JSON3 objects into standard Julia dictionaries for easier manipulation.
+"""
 function _dict_of_json3(d::JSON3.Object{})
     result = Dict{Symbol, Any}()
     for (k, v) in d
@@ -218,17 +244,4 @@ function _dict_of_json3(d::JSON3.Object{})
     end
     return result
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# --------------------------------------------------------------------------------------------------
