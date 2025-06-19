@@ -1,25 +1,21 @@
 # Working with JSON Lines Files
 
-JSON Lines (JSONL) is a convenient format for storing structured data that may be processed one record at a time. Each line is a valid JSON value, separated by a newline character. This format is ideal for large datasets and streaming applications.
-
-For more details, see [jsonlines.org](https://jsonlines.org/).
 
 ---
 
-## What is JSON Lines?
+## From the website: what is JSON Lines?
+
+> JSON Lines (JSONL) is a convenient format for storing structured data that may be processed one record at a time. Each line is a valid JSON value, separated by a newline character. This format is ideal for large datasets and streaming applications.
 
 - **UTF-8 Encoding:** Files must be UTF-8 encoded. Do not include a byte order mark (BOM).
 - **One JSON Value Per Line:** Each line is a valid JSON value (object, array, string, number, boolean, or null). Blank lines are ignored.
 - **Line Separator:** Each line ends with `\n` (or `\r\n`). The last line may or may not end with a newline.
 
-**Example:**
-```json
-{"name": "Alice", "score": 42}
-{"name": "Bob", "score": 17}
-[1, 2, 3]
-"hello"
-null
-```
+
+For more details, see [jsonlines.org](https://jsonlines.org/).
+
+This is a personal implementation and is not tested for any sort of standard. 
+It works fine for my usecase and I try to fix things as I encounter them, but ymmv. 
 
 ---
 
@@ -131,4 +127,4 @@ roundtrip(data_symbol) == data_symbol
 
 ---
 
-For more advanced usage and performance tips, see the main documentation and function docstrings.
+For more advanced usage, see the function docstrings or the test suite. 

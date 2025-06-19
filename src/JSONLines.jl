@@ -216,6 +216,11 @@ function write_jsonl(filename::AbstractString, data; compress::Bool=false)
     end
     return filename
 end
+
+function write_jsonl(filename::AbstractString, data::AbstractDataFrame; kwargs...)
+    row_tuples = (NamedTuple(row) for row in eachrow(data))
+    write_jsonl(filename, row_tuples; kwargs...)
+end
 # --------------------------------------------------------------------------------------------------
 
 
