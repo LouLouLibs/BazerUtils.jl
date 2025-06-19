@@ -1,7 +1,7 @@
 name = "BazerUtils"
 uuid = "36dcebb2-80bb-4116-91f4-ed9f396c4a1c"
 authors = ["Erik Loualiche"]
-version = "0.8.2"
+version = "0.8.3"
 
 [deps]
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
