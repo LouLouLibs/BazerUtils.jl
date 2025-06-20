@@ -31,7 +31,7 @@ This function traverses the input `JSON3.Object`, converting all keys to `Symbol
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/JSONLines.jl#L262-L278" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/JSONLines.jl#L262-L278" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -47,7 +47,7 @@ reformat_msg
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/CustomLogger.jl#L362-L365" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/CustomLogger.jl#L362-L365" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -101,7 +101,7 @@ julia> shorten_path_str("/home/user/documents/very_long_filename.txt", strategy=
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/CustomLogger.jl#L511-L541" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/CustomLogger.jl#L511-L541" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

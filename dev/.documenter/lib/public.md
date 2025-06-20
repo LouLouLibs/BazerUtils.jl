@@ -41,7 +41,7 @@ The custom_logger function creates four files in `output_dir`for four different 
 Note that the default **overwrites** old log files (specify overwrite=false to avoid this).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/CustomLogger.jl#L72-L98" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/CustomLogger.jl#L72-L98" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -107,7 +107,7 @@ println("First record ID: ", first_record.id)
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/JSONLines.jl#L16-L59" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/JSONLines.jl#L16-L59" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -187,7 +187,7 @@ end
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/JSONLines.jl#L93-L149" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/JSONLines.jl#L93-L149" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -218,7 +218,7 @@ write_jsonl("out.jsonl.gz", (Dict("i"=>i) for i in 1:10^6))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/fe00236d56bfb22fc2abb693a449dd3c03afb8ab/src/JSONLines.jl#L203-L218" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/867be70d3424213b1250e942d91400be4017ad0a/src/JSONLines.jl#L203-L218" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
