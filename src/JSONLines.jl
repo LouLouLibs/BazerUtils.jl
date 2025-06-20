@@ -182,6 +182,24 @@ end
 
 
 # --------------------------------------------------------------------------------------------------
+abstract type IterationStyle end
+struct TableIteration <: IterationStyle end
+struct DirectIteration <: IterationStyle end
+
+function iteration_style(x)
+    # Only use table iteration for proper table types
+    if (Tables.istable(x) && !isa(x, AbstractVector) && !isa(x, AbstractDict))
+        TableIteration()
+    else
+        DirectIteration()
+    end
+end
+
+
+function write_jsonl(filename::AbstractString, data; kwargs...)
+    write_jsonl(filename, data, iteration_style(data); kwargs...)
+end
+
 """
     write_jsonl(filename, data; compress=false)
 
@@ -198,7 +216,28 @@ write_jsonl("out.jsonl", [Dict("a"=>1), Dict("b"=>2)])
 write_jsonl("out.jsonl.gz", (Dict("i"=>i) for i in 1:10^6))
 ```
 """
-function write_jsonl(filename::AbstractString, data; compress::Bool=false)
+function write_jsonl(filename::AbstractString, data, ::TableIteration; compress::Bool=false)
+    # @warn "Implementation for tables"
+    dir = dirname(filename)
+    if !isdir(dir)
+        throw(ArgumentError("Directory does not exist: $dir"))
+    end
+    isgz = compress || endswith(filename, ".gz")
+    openf = isgz ? x->CodecZlib.GzipCompressorStream(open(x, "w")) : x->open(x, "w")
+    io = openf(filename)
+    try
+        for value in Tables.namedtupleiterator(data)
+            JSON3.write(io, value)
+            write(io, '\n')
+        end
+    finally
+        close(io)
+    end
+    return filename
+end
+
+function write_jsonl(filename::AbstractString, data, ::DirectIteration; compress::Bool=false)
+    # @warn "Implementation for direct iteration"
     dir = dirname(filename)
     if !isdir(dir)
         throw(ArgumentError("Directory does not exist: $dir"))
@@ -215,11 +254,6 @@ function write_jsonl(filename::AbstractString, data; compress::Bool=false)
         close(io)
     end
     return filename
-end
-
-function write_jsonl(filename::AbstractString, data::AbstractDataFrame; kwargs...)
-    row_tuples = (NamedTuple(row) for row in eachrow(data))
-    write_jsonl(filename, row_tuples; kwargs...)
 end
 # --------------------------------------------------------------------------------------------------
 

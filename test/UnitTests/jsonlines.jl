@@ -163,6 +163,16 @@ end
     @test BazerUtils._dict_of_json3.(gz_data) == data_dict
     # @assert gz_data == data
 
+    jsonl_file = tempname() * ".jsonl"
+    simple_table = [ 
+        (id=1, name="Alice", age=30), 
+        (id=2, name="Bob", age=25),
+        (id=3, name="Charlie", age=35)
+    ]
+    write_jsonl(jsonl_file, simple_table)
+    simple_dict = read_jsonl(jsonl_file) 
+    @test BazerUtils._dict_of_json3.(simple_dict) == map(row -> Dict(pairs(row)), simple_table)
+
 end
 # --------------------------------------------------------------------------------------------------
 

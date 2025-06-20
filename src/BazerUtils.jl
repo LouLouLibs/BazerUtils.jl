@@ -7,6 +7,7 @@ import Logging: global_logger, Logging, Logging.Debug, Logging.Info, Logging.War
 import LoggingExtras: ConsoleLogger, EarlyFilteredLogger, FileLogger, FormatLogger,
     MinLevelLogger, TeeLogger, TransformerLogger
 import JSON3: JSON3
+import Tables: Tables
 import CodecZlib: CodecZlib
 # --------------------------------------------------------------------------------------------------
 
