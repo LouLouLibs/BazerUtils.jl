@@ -1,19 +1,20 @@
 # BazerUtils.jl
 
 
-[![CI](https://github.com/eloualiche/BazerUtils.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/eloualiche/BazerUtils.jl/actions/workflows/CI.yml)
-[![Lifecycle:Experimental](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/eloualiche/BazerUtils.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/eloualiche/BazerUtils.jl/graph/badge.svg?token=53QO3HSSRT)](https://codecov.io/gh/eloualiche/BazerUtils.jl)
+[![CI](https://github.com/louloulibs/BazerUtils.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/louloulibs/BazerUtils.jl/actions/workflows/CI.yml)
+[![Lifecycle:Experimental](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/louloulibs/BazerUtils.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/louloulibs/BazerUtils.jl/graph/badge.svg?token=53QO3HSSRT)](https://codecov.io/gh/louloulibs/BazerUtils.jl)
 
 
 
 `BazerUtils.jl` is a package that assembles various functionality that I use on a frequent basis in julia.
-It is a more mature version of [`Prototypes.jl`](https://github.com/eloualiche/Prototypes.jl) where I try a bunch of things out (there is overlap).
+It is a more mature version of [`Prototypes.jl`](https://github.com/louloulibs/Prototypes.jl) where I try a bunch of things out (there is overlap).
+
 
 So far the package provides a two sets of functions:
-    
-    - [`custom_logger`](#custom-logging) is a custom logging output that builds on the standard julia logger
-    - [`read_jsonl`](#json-lines) provides utilities to read and write json-lines files
+
+   - [`custom_logger`](#custom-logging) is a custom logging output that builds on the standard julia logger
+   - [`read_jsonl`](#json-lines) provides utilities to read and write json-lines files
 
 
 ## Installation
@@ -42,7 +43,7 @@ I wanted to have a custom logger that would allow me to filter messages from spe
 The formatter is hard-coded to what I like but I guess I could change it easily and make it an option.
 
 Here is an example where you can create a custom logger and redirect logging to different files.
-See the doc for more [examples](https://eloualiche.github.io/BazerUtils.jl/dev/man/logger_guide)
+See the doc for more [examples](https://louloulibs.github.io/BazerUtils.jl/dev/man/logger_guide)
 ```julia
 custom_logger(
     "./log/build_stable_sample_multiplier";                   # prefix of log-file being generated
