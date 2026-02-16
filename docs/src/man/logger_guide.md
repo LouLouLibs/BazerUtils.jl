@@ -106,16 +106,10 @@ You can use the same logger option with the `overwrite=false` option:
 
 ## Other
 
-For `log4j` I do modify the message string to fit on one line. 
-You will find that the "\n" is now replaced by " | "; I guess I could have an option for which character delimitates lines, but this seems too fussy.
+For `log4j` the message string is modified to fit on one line: `\n` is replaced by ` | `.
 
-I am trying to have a path shortener that would allow to reduce the path of the function to a fixed size.
-The cost is that path will no longer be "clickable" but we would keep things tidy as messages will all start at the same column.
-(see the `shorten_path_str` function).
-
-
-
-
+There is also a path shortener (`shorten_path_str`) that reduces file paths to a fixed size.
+The cost is that paths will no longer be clickable, but log messages will start at the same column.
 
 
 

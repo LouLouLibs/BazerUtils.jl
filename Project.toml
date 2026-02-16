@@ -12,13 +12,11 @@ LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
 [compat]
-CodecZlib = "0.7.8"
-Dates = "1.11.0"
-JSON3 = "1.14.3"
-Logging = "1.11.0"
-LoggingExtras = "1.1.0"
-Tables = "1.12.1"
-julia = "1.6.7"
+CodecZlib = "0.7"
+JSON3 = "1.14"
+LoggingExtras = "1"
+Tables = "1.12"
+julia = "1.10"
 
 [extras]
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"

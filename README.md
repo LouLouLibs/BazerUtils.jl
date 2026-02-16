@@ -11,10 +11,10 @@
 It is a more mature version of [`Prototypes.jl`](https://github.com/louloulibs/Prototypes.jl) where I try a bunch of things out (there is overlap).
 
 
-So far the package provides a two sets of functions:
+The package provides:
 
-   - [`custom_logger`](#custom-logging) is a custom logging output that builds on the standard julia logger
-   - [`read_jsonl`](#json-lines) provides utilities to read and write json-lines files
+   - [`custom_logger`](#custom-logging): configurable logging with per-level file output, module filtering, and multiple format options (`pretty`, `log4j`, `syslog`)
+   - ~~`read_jsonl` / `stream_jsonl` / `write_jsonl`~~: **deprecated** — use [`JSON.jl`](https://github.com/JuliaIO/JSON.jl) v1 with `jsonlines=true` instead
 
 
 ## Installation
@@ -63,9 +63,15 @@ custom_logger(
 ```
 
 
-### JSON Lines
+### JSON Lines (deprecated)
 
-A easy way to read json lines files into julia leaning on `JSON3` reader.
+The JSONL functions (`read_jsonl`, `stream_jsonl`, `write_jsonl`) are deprecated.
+Use [`JSON.jl`](https://github.com/JuliaIO/JSON.jl) v1 instead:
+```julia
+using JSON
+data = JSON.parse("data.jsonl"; jsonlines=true)       # read
+JSON.json("out.jsonl", data; jsonlines=true)           # write
+```
 
 
 ## Other stuff

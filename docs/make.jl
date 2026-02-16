@@ -41,21 +41,9 @@ makedocs(
 )
 
 
-deploydocs(
-    repo="github.com/LouLouLibs/BazerUtils.jl",
-    target = "build",
-)
-
 deploydocs(;
     repo="github.com/LouLouLibs/BazerUtils.jl",
     target = "build",
     branch = "gh-pages",
-    devbranch = "main",  # or "master"
-    versions = [
-        "stable" => "0.8.2",
-        "dev" => "dev",
-    ],
+    devbranch = "main",
 )
-
-
-# --------------------------------------------------------------------------------------------------

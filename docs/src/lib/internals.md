@@ -5,4 +5,5 @@
 ```@autodocs
 Modules = [BazerUtils]
 Public = false
+Order = [:function, :type]
 ```

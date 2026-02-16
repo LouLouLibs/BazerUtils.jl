@@ -3,9 +3,8 @@ module BazerUtils
 
 # --------------------------------------------------------------------------------------------------
 import Dates: format, now, Dates, ISODateTimeFormat
-import Logging: global_logger, Logging, Logging.Debug, Logging.Info, Logging.Warn, AbstractLogger
-import LoggingExtras: ConsoleLogger, EarlyFilteredLogger, FileLogger, FormatLogger,
-    MinLevelLogger, TeeLogger, TransformerLogger
+import Logging: global_logger, Logging, Logging.Debug, Logging.Info, Logging.Warn
+import LoggingExtras: EarlyFilteredLogger, FormatLogger, MinLevelLogger, TeeLogger
 import JSON3: JSON3
 import Tables: Tables
 import CodecZlib: CodecZlib

@@ -25,7 +25,7 @@ function get_log_filenames(filename::AbstractString;
         # files = ["$(filename)_error.log", "$(filename)_warn.log",
         #          "$(filename)_info.log", "$(filename)_debug.log"]
     else
-        files = repeat([filename], 4)
+        files = repeat([filename], length(file_loggers))
     end
     return files
 end
@@ -72,29 +72,35 @@ end
 """
     custom_logger(filename; kw...)
 
+Set up a custom global logger with per-level file output, module filtering, and configurable formatting.
+
+When `create_log_files=true`, creates one log file per level (e.g. `filename_error.log`, `filename_warn.log`, etc.).
+Otherwise all levels write to the same file.
+
 # Arguments
 - `filename::AbstractString`: base name for the log files
-- `output_dir::AbstractString=./log/`: name of directory where log files are written
-- `filtered_modules_specific::Vector{Symbol}=nothing`: which modules do you want to filter out of logging (only for info and stdout)
-  Some packages just write too much log ... filter them out but still be able to check them out in other logs
-- `filtered_modules_all::Vector{Symbol}=nothing`: which modules do you want to filter out of logging (across all logs)
-   Examples could be TranscodingStreams (noticed that it writes so much to logs that it sometimes slows down I/O)
-- `file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug]`: which file logger to register 
-- `log_date_format::AbstractString="yyyy-mm-dd"`: time stamp format at beginning of each logged lines for dates
-- `log_time_format::AbstractString="HH:MM:SS"`: time stamp format at beginning of each logged lines for times
-- `displaysize::Tuple{Int,Int}=(50,100)`: how much to show on log (same for all logs for now!)
-- `log_format::Symbol=:log4j`: how to format the log files; I have added an option for pretty (all or nothing for now)
-- `log_format_stdout::Symbol=:pretty`: how to format the stdout; default is pretty
-- `overwrite::Bool=false`: do we overwrite previously created log files
+- `filtered_modules_specific::Union{Nothing, Vector{Symbol}}=nothing`: modules to filter out of stdout and info-level file logs only (e.g. `[:TranscodingStreams]`)
+- `filtered_modules_all::Union{Nothing, Vector{Symbol}}=nothing`: modules to filter out of all logs (e.g. `[:HTTP]`)
+- `file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug]`: which file loggers to register
+- `log_date_format::AbstractString="yyyy-mm-dd"`: date format in log timestamps
+- `log_time_format::AbstractString="HH:MM:SS"`: time format in log timestamps
+- `displaysize::Tuple{Int,Int}=(50,100)`: display size for non-string log messages
+- `log_format::Symbol=:log4j`: format for file logs (`:log4j`, `:pretty`, or `:syslog`)
+- `log_format_stdout::Symbol=:pretty`: format for stdout
+- `shorten_path::Symbol=:relative_path`: path shortening strategy for log4j format
+- `create_log_files::Bool=false`: create separate files per log level
+- `overwrite::Bool=false`: overwrite existing log files
+- `create_dir::Bool=false`: create the log directory if it doesn't exist
+- `verbose::Bool=false`: warn about filtering non-imported modules
 
-The custom_logger function creates four files in `output_dir` for four different levels of logging:
-    from least to most verbose: `filename.info.log.jl`, `filename.warn.log.jl`, `filename.debug.log.jl`, `filename.full.log.jl`
-The debug logging offers the option to filter messages from specific packages (some packages are particularly verbose) using the `filter` optional argument
-The full logging gets all of the debug without any of the filters.
-Info and warn log the standard info and warning level logging messages.
-
-Note that the default **overwrites** old log files (specify overwrite=false to avoid this).
-
+# Example
+```julia
+custom_logger("/tmp/myapp";
+    filtered_modules_all=[:HTTP, :TranscodingStreams],
+    create_log_files=true,
+    overwrite=true,
+    log_format=:log4j)
+```
 """
 function custom_logger(
     sink::LogSink;
@@ -112,52 +118,34 @@ function custom_logger(
     # warning if some non imported get filtered ...
     imported_modules = filter((x) -> typeof(getfield(Main, x)) <: Module && x ≠ :Main,
         names(Main, imported=true))
-    all_filters = filter(x->!isnothing(x), unique([filtered_modules_specific; filtered_modules_all]))
-    catch_nonimported = map(x -> x ∈ imported_modules, all_filters)
-    if !(reduce(&, catch_nonimported)) && verbose
-        @warn "Some non (directly) imported modules are being filtered ... $(join(string.(all_filters[.!catch_nonimported]), ", "))"
+    all_filters = Symbol[x for x in unique(vcat(
+        something(filtered_modules_specific, Symbol[]),
+        something(filtered_modules_all, Symbol[]))) if !isnothing(x)]
+    if !isempty(all_filters) && verbose
+        catch_nonimported = map(x -> x ∈ imported_modules, all_filters)
+        if !all(catch_nonimported)
+            @warn "Some non (directly) imported modules are being filtered ... $(join(string.(all_filters[.!catch_nonimported]), ", "))"
+        end
     end
 
-    # Filter functions
-    function create_absolute_filter(modules)
+    # Create a log filter that drops messages from the given modules.
+    # Uses startswith to also catch submodules (e.g. :HTTP catches HTTP.ConnectionPool).
+    function create_module_filter(modules)
         return function(log)
             if isnothing(modules)
                 return true
-            else
-                module_name = string(log._module)
-                # Check if the module name starts with any of the filtered module names
-                # some modules did not get filtered because of submodules...
-                # Note: we might catch too many modules here so keep it in mind if something does not show up in log
-                for m in modules
-                    if startswith(module_name, string(m))
-                        return false  # Filter out if matches
-                    end
-                end
-                return true  # Keep if no matches
             end
+            module_name = string(log._module)
+            for m in modules
+                if startswith(module_name, string(m))
+                    return false
+                end
+            end
+            return true
         end
     end
-    module_absolute_message_filter = create_absolute_filter(filtered_modules_all)
-
-    function create_specific_filter(modules)
-        return function(log)
-            if isnothing(modules)
-                return true
-            else
-                module_name = string(log._module)
-                # Check if the module name starts with any of the filtered module names
-                # some modules did not get filtered because of submodules...
-                # Note: we might catch too many modules here so keep it in mind if something does not show up in log
-                for m in modules
-                    if startswith(module_name, string(m))
-                        return false  # Filter out if matches
-                    end
-                end
-                return true  # Keep if no matches
-            end
-        end
-    end
-    module_specific_message_filter = create_absolute_filter(all_filters)
+    module_absolute_message_filter = create_module_filter(filtered_modules_all)
+    module_specific_message_filter = create_module_filter(filtered_modules_specific)
 
 
     format_log_stdout = (io,log_record)->custom_format(io, log_record;
@@ -173,29 +161,6 @@ function custom_logger(
         log_format=log_format,
         shorten_path=shorten_path)
 
-    # Create demux_logger using sink's IO streams
-    # demux_logger = TeeLogger(
-    #     MinLevelLogger(
-    #         EarlyFilteredLogger(module_absolute_message_filter, # error
-    #             FormatLogger(format_log_file, sink.ios[1])),
-    #         Logging.Error),
-    #     MinLevelLogger(
-    #         EarlyFilteredLogger(module_absolute_message_filter, # warn
-    #             FormatLogger(format_log_file, sink.ios[2])),
-    #         Logging.Warn),
-    #     MinLevelLogger(
-    #         EarlyFilteredLogger(module_specific_message_filter, # info
-    #             FormatLogger(format_log_file, sink.ios[3])),
-    #         Logging.Info),
-    #     MinLevelLogger(
-    #         EarlyFilteredLogger(module_absolute_message_filter, # debug
-    #             FormatLogger(format_log_file, sink.ios[4])),
-    #         Logging.Debug),
-    #     MinLevelLogger(
-    #         EarlyFilteredLogger(module_specific_message_filter, # stdout
-    #             FormatLogger(format_log_stdout, stdout)),
-    #         Logging.Info)
-    # )
     demux_logger = create_demux_logger(sink, file_loggers,
         module_absolute_message_filter, module_specific_message_filter, format_log_file, format_log_stdout)
 
@@ -226,12 +191,13 @@ function custom_logger(
 
     # create directory if needed and bool true
     # returns an error if directory does not exist and bool false
-    log_dir = unique(dirname.(files))
-    if create_dir && !isdir(log_dir)
-        @warn "Creating directory for logs ... $(join(log_dir, ", "))"
-        mkpath.(log_dir)
-    elseif !isdir(log_dir)
-        @error "Directory for logs does not exist ... $(join(log_dir, ", "))"
+    log_dirs = unique(dirname.(files))
+    missing_dirs = filter(d -> !isempty(d) && !isdir(d), log_dirs)
+    if create_dir && !isempty(missing_dirs)
+        @warn "Creating directory for logs ... $(join(missing_dirs, ", "))"
+        mkpath.(missing_dirs)
+    elseif !isempty(missing_dirs)
+        @error "Directory for logs does not exist ... $(join(missing_dirs, ", "))"
     end
     # Handle cleanup if needed
     overwrite && foreach(f -> rm(f, force=true), files)
@@ -347,10 +313,10 @@ function custom_format(io, log_record::NamedTuple;
 
     elseif log_format == :log4j
         log_entry = log_record |> 
-            str -> format_log4j(str, shorten_path=shorten_path) |> msg_to_singline
+            str -> format_log4j(str, shorten_path=shorten_path) |> msg_to_singleline
         println(io, log_entry)
     elseif log_format == :syslog
-        log_entry = log_record |> format_syslog |> msg_to_singline
+        log_entry = log_record |> format_syslog |> msg_to_singleline
         println(io, log_entry)
     end
 
@@ -384,7 +350,7 @@ function reformat_msg(log_record;
 end
 
 
-function msg_to_singline(message::AbstractString)::AbstractString
+function msg_to_singleline(message::AbstractString)::AbstractString
     message |>
         str -> replace(str, r"\"\"\"[\r\n\s]*(.+?)[\r\n\s]*\"\"\""s => s"\1") |>
         str -> replace(str, r"\n\s*" => " | ") |>
