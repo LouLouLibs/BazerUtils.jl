@@ -58,7 +58,7 @@ custom_logger("/tmp/myapp";
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/ae86651cd3c0bfb15f5475109bb0b6155cd6a12d/src/CustomLogger.jl#L72-L104" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/5f9cc7580b328c3826621ad0141e8d66e1d2d3dd/src/CustomLogger.jl#L72-L104" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -93,7 +93,7 @@ Each line is parsed as a separate JSON value. Empty lines are skipped.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/ae86651cd3c0bfb15f5475109bb0b6155cd6a12d/src/JSONLines.jl#L16-L33" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/5f9cc7580b328c3826621ad0141e8d66e1d2d3dd/src/JSONLines.jl#L16-L33" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -126,7 +126,7 @@ Create a lazy Channel iterator for reading JSON Lines files record by record.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/ae86651cd3c0bfb15f5475109bb0b6155cd6a12d/src/JSONLines.jl#L69-L84" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/5f9cc7580b328c3826621ad0141e8d66e1d2d3dd/src/JSONLines.jl#L69-L84" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -161,7 +161,7 @@ Write an iterable of JSON-serializable values to a JSON Lines file.
 The filename.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/ae86651cd3c0bfb15f5475109bb0b6155cd6a12d/src/JSONLines.jl#L143-L159" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/LouLouLibs/BazerUtils.jl/blob/5f9cc7580b328c3826621ad0141e8d66e1d2d3dd/src/JSONLines.jl#L143-L159" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
