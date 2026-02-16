@@ -9,7 +9,6 @@ push!(LOAD_PATH, "../src/")
 # --
 using BazerUtils
 using Documenter
-using DocumenterVitepress
 
 # --
 DocMeta.setdocmeta!(BazerUtils, :DocTestSetup, :(using BazerUtils);
@@ -17,12 +16,7 @@ DocMeta.setdocmeta!(BazerUtils, :DocTestSetup, :(using BazerUtils);
 
 # --
 makedocs(
-    # format = Documenter.HTML(),
-    format=DocumenterVitepress.MarkdownVitepress(
-        repo = "https://github.com/LouLouLibs/BazerUtils.jl",
-        devbranch = "main",
-        devurl = "dev";
-    ),
+    format = Documenter.HTML(),
     sitename = "BazerUtils.jl",
     modules  = [BazerUtils],
     authors = "Erik Loualiche",
