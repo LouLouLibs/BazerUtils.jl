@@ -3,12 +3,15 @@
 # STANDARD JULIA IGNORE
 /Manifest.toml
 /Manifest*.toml
-docs/
-docs/node_modules
+docs/build/
+docs/node_modules/
 .DS_Store
-docs/.DS_Store
 .env
 .env.gpg
 .vscode
-# ---------------------------------------------------------
 
+# Coverage artifacts
+*.jl.cov
+*.jl.mem
+/lcov.info
+# ---------------------------------------------------------

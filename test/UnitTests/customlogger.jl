@@ -57,7 +57,7 @@
     @test contains(log_content[2], "WARN MESSAGE")
     @test contains(log_content[3], "INFO MESSAGE")
     @test contains(log_content[4], "DEBUG MESSAGE")
-    rm.(log_files)
+    close_logger(logger_multiple, remove_files=true)
 
     # -- logger with absolute filtering
     logger_multiple = custom_logger(
@@ -73,6 +73,7 @@
     @test countlines(log_files[3]) == 0
     @test countlines(log_files[4]) != 0 # TranscodingStreams write here
     @test !contains(log_content[4], r"HTTP"i)
+    close_logger(logger_multiple, remove_files=true)
 
     # -- logger with specific filtering
     logger_multiple = custom_logger(
@@ -89,7 +90,7 @@
     @test countlines(log_files[3]) == 0; # this is getting filtered out
     @test countlines(log_files[4]) != 0  # TranscodingStreams write here
     @test contains(log_content[4], r"HTTP"i)
-
+    close_logger(logger_multiple, remove_files=true)
 
     # -- logger with formatting
     logger_single = custom_logger(
@@ -166,10 +167,6 @@
     close_logger(logger_single, remove_files=true)
 
 end
-
-
-
-
 
 
 

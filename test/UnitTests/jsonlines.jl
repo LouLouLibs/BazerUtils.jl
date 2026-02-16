@@ -50,10 +50,7 @@
     third_obj = popfirst!(stateful_stream)
     @test third_obj["a"] == 3
     @test third_obj["b"] == "baz"
-    try popfirst!(stateful_stream)
-    catch e
-        @test isa(e, EOFError)
-    end
+    @test_throws EOFError popfirst!(stateful_stream)
 
     # --- collect
     # Test that the iterator can be collected fully
