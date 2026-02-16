@@ -209,17 +209,14 @@ function custom_logger(
 end
 
 
-# version for starting julia in batch mode
-function custom_logger(;
-    kwargs...)
-
-    if abspath(PROGRAM_FILE) == @__FILE__  # true if not in REPL
-        custom_logger(@__FILE__;
-            kwargs...)
+# Convenience for batch mode: uses PROGRAM_FILE as the log filename base
+function custom_logger(; kwargs...)
+    if !isempty(PROGRAM_FILE)
+        logbase = splitext(abspath(PROGRAM_FILE))[1]
+        custom_logger(logbase; kwargs...)
     else
-        @error "Could not get proper filename for logger ... filename = $(@__FILE__)"
+        @error "custom_logger() with no arguments requires a script context (PROGRAM_FILE is empty in the REPL)"
     end
-
 end
 # --------------------------------------------------------------------------------------------------
 
