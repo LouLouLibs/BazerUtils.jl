@@ -114,6 +114,6 @@ Now imagine you want to keep the same log file but for a different script.  You 
 
 ## Other {#Other}
 
-For `log4j` I do modify the message string to fit on one line.  You will find that the &quot;\n&quot; is now replaced by &quot; | &quot;; I guess I could have an option for which character delimitates lines, but this seems too fussy.
+For `log4j` the message string is modified to fit on one line: `\n` is replaced by `|`.
 
-I am trying to have a path shortener that would allow to reduce the path of the function to a fixed size. The cost is that path will no longer be &quot;clickable&quot; but we would keep things tidy as messages will all start at the same column. (see the `shorten_path_str` function).
+There is also a path shortener (`shorten_path_str`) that reduces file paths to a fixed size. The cost is that paths will no longer be clickable, but log messages will start at the same column.
