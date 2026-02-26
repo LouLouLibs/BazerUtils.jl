@@ -1,19 +1,19 @@
 name = "BazerUtils"
 uuid = "36dcebb2-80bb-4116-91f4-ed9f396c4a1c"
 authors = ["Erik Loualiche"]
-version = "0.9.2"
+version = "0.10.0"
 
 [deps]
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
-JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
 [compat]
 CodecZlib = "0.7"
-JSON3 = "1.14"
+JSON = "1"
 LoggingExtras = "1"
 Tables = "1.12"
 julia = "1.10"

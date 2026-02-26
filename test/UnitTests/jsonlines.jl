@@ -12,7 +12,7 @@
     jsonl_file = tempname()
     open(jsonl_file, "w") do io
         for obj in data
-            JSON3.write(io, obj)
+            JSON.json(io, obj)
             write(io, '\n')
         end
     end
@@ -34,7 +34,7 @@
     third_obj = iterate(stream)[1]
     @test third_obj["a"] == 3
     @test third_obj["b"] == "baz"
-   
+
     @test isnothing(iterate(stream))
     @test !isopen(stream)
 
@@ -85,7 +85,7 @@ end
     jsonl_file = tempname()
     open(jsonl_file, "w") do io
         for obj in data
-            JSON3.write(io, obj)
+            JSON.json(io, obj)
             write(io, '\n')
         end
     end
@@ -108,7 +108,7 @@ end
     # Test with malformed JSON line
     bad_file = tempname()
     open(bad_file, "w") do io
-        JSON3.write(io, Dict("a" => 1))
+        JSON.json(io, Dict("a" => 1))
         write(io, '\n')
         write(io, "{bad json}\n")
     end
@@ -130,20 +130,18 @@ end
         buf = IOBuffer()
         # Write each value as a JSON line
         for obj in data
-            JSON3.write(buf, obj)
+            JSON.json(buf, obj)
             write(buf, '\n')
         end
         seekstart(buf)
-        # String(read(buf))
 
         # Read all at once
         read_data = read_jsonl(buf)
-        read_data = read_data isa JSON3.Object ? BazerUtils._dict_of_json3.(read_data) : read_data
 
         # Stream and collect
         seekstart(buf)
         streamed = collect(stream_jsonl(buf, T=Any))
-        @test streamed == data
+        @test streamed == read_data
     end
 
     data_dict = [Dict(:a=>1, :b => Dict(:c => "bar")), Dict(:c=>2)]
@@ -157,18 +155,18 @@ end
     write_jsonl(jsonl_file, data_dict)
 
     gz_data = read_jsonl(CodecZlib.GzipDecompressorStream(open(jsonl_file)))
-    @test BazerUtils._dict_of_json3.(gz_data) == data_dict
+    @test BazerUtils._dict_of_json.(gz_data) == data_dict
     # @assert gz_data == data
 
     jsonl_file = tempname() * ".jsonl"
-    simple_table = [ 
-        (id=1, name="Alice", age=30), 
+    simple_table = [
+        (id=1, name="Alice", age=30),
         (id=2, name="Bob", age=25),
         (id=3, name="Charlie", age=35)
     ]
     write_jsonl(jsonl_file, simple_table)
-    simple_dict = read_jsonl(jsonl_file) 
-    @test BazerUtils._dict_of_json3.(simple_dict) == map(row -> Dict(pairs(row)), simple_table)
+    simple_dict = read_jsonl(jsonl_file)
+    @test BazerUtils._dict_of_json.(simple_dict) == map(row -> Dict(pairs(row)), simple_table)
 
 end
 # --------------------------------------------------------------------------------------------------
@@ -180,7 +178,7 @@ end
     large_file = tempname()
     open(large_file, "w") do io
         for i in 1:10^6
-            JSON3.write(io, Dict("i" => i))
+            JSON.json(io, Dict("i" => i))
             write(io, '\n')
         end
     end
@@ -217,9 +215,9 @@ end
     @testset "trailing newlines and empty lines" begin
     file = tempname()
     open(file, "w") do io
-        JSON3.write(io, Dict("a" => 1))
+        JSON.json(io, Dict("a" => 1))
         write(io, "\n\n")  # two trailing newlines (one empty line)
-        JSON3.write(io, Dict("a" => 2))
+        JSON.json(io, Dict("a" => 2))
         write(io, "\n\n\n")  # three trailing newlines (two empty lines)
     end
     result_stream = collect(stream_jsonl(file))
@@ -237,10 +235,10 @@ end
     file = tempname()
     open(file, "w") do io
         write(io, "# this is a comment\n")
-        JSON3.write(io, Dict("a" => 1))
+        JSON.json(io, Dict("a" => 1))
         write(io, "\n")
         write(io, "// another comment\n")
-        JSON3.write(io, Dict("a" => 2))
+        JSON.json(io, Dict("a" => 2))
         write(io, "\n")
     end
     # Should throw, since comments are not valid JSON

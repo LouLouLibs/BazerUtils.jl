@@ -4,7 +4,7 @@ using Test
 
 import Logging: global_logger
 import LoggingExtras: ConsoleLogger, TeeLogger
-import JSON3
+import JSON
 import CodecZlib
 import HTTP
 

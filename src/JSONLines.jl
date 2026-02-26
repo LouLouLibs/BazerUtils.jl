@@ -26,7 +26,7 @@ Each line is parsed as a separate JSON value. Empty lines are skipped.
 
 # Arguments
 - `source::Union{AbstractString, IO}`: Path to a JSONL file, or an IO stream.
-- `dict_of_json::Bool=false`: If `true` and the parsed type is `JSON3.Object`, convert each record to a `Dict{Symbol,Any}`.
+- `dict_of_json::Bool=false`: If `true` and the parsed type is `JSON.Object`, convert each record to a `Dict{Symbol,Any}`.
 
 # Returns
 - `Vector`: A vector of parsed JSON values.
@@ -37,16 +37,16 @@ function read_jsonl(io::IO; dict_of_json::Bool=false)
     nonempty_lines = filter(l -> !isempty(strip(l)), lines)
     isempty(nonempty_lines) && return []
 
-    first_val = JSON3.read(nonempty_lines[1])
+    first_val = JSON.parse(nonempty_lines[1])
     T = typeof(first_val)
     results = Vector{T}(undef, length(nonempty_lines))
     results[1] = first_val
 
     for (i, line) in enumerate(nonempty_lines[2:end])
-        results[i+1] = JSON3.read(line)
+        results[i+1] = JSON.parse(line)
     end
-    if dict_of_json && T <: JSON3.Object{}
-        results = [_dict_of_json3(r) for r in results]
+    if dict_of_json && T <: JSON.Object
+        results = [_dict_of_json(r) for r in results]
     end
 
     return results
@@ -67,7 +67,7 @@ end
 # Using lazy evaluation with generators
 # For very large files, you can create a generator that yields records on demand:
 """
-    stream_jsonl(source::Union{AbstractString, IO}; T::Type=JSON3.Object{}) -> Channel
+    stream_jsonl(source::Union{AbstractString, IO}; T::Type=JSON.Object{String, Any}) -> Channel
 
 !!! warning "Deprecated"
     `stream_jsonl` is deprecated. Use `JSON.parse(source; jsonlines=true)` from
@@ -77,17 +77,17 @@ Create a lazy Channel iterator for reading JSON Lines files record by record.
 
 # Arguments
 - `source::Union{AbstractString, IO}`: Path to a JSONL file, or an IO stream.
-- `T::Type=JSON3.Object{}`: Expected type for each record. Use `T=Any` for mixed types.
+- `T::Type=JSON.Object{String, Any}`: Expected type for each record. Use `T=Any` for mixed types.
 
 # Returns
 - `Channel{T}`: A channel yielding parsed JSON objects one at a time.
 """
-function stream_jsonl(io::IO; T::Type=JSON3.Object{})
+function stream_jsonl(io::IO; T::Type=JSON.Object{String, Any})
     Base.depwarn("`stream_jsonl` is deprecated. Use `JSON.parse(io; jsonlines=true)` from JSON.jl v1 instead.", :stream_jsonl)
     lines = Iterators.filter(l -> !isempty(strip(l)), eachline(io))
     return Channel{T}() do ch
         for line in lines
-            val = JSON3.read(line)
+            val = JSON.parse(line)
             if !isa(val, T)
                 throw(ArgumentError("Parsed value of type $(typeof(val)) does not match expected type $T;\nTry specifying T::Any"))
             end
@@ -97,7 +97,7 @@ function stream_jsonl(io::IO; T::Type=JSON3.Object{})
 end
 
 
-function stream_jsonl(filename::AbstractString; T::Type=JSON3.Object{})
+function stream_jsonl(filename::AbstractString; T::Type=JSON.Object{String, Any})
     Base.depwarn("`stream_jsonl` is deprecated. Use `JSON.parse(filename; jsonlines=true)` from JSON.jl v1 instead.", :stream_jsonl)
     if !isfile(filename)
         throw(ArgumentError("File does not exist or is not a regular file: $filename"))
@@ -108,7 +108,7 @@ function stream_jsonl(filename::AbstractString; T::Type=JSON3.Object{})
                 if isempty(strip(line))
                     continue
                 end
-                val = JSON3.read(line)
+                val = JSON.parse(line)
                 if !isa(val, T)
                     throw(ArgumentError("Parsed value of type $(typeof(val)) does not match expected type $T"))
                 end
@@ -167,7 +167,7 @@ function write_jsonl(filename::AbstractString, data, ::TableIteration; compress:
     io = openf(filename)
     try
         for value in Tables.namedtupleiterator(data)
-            JSON3.write(io, value)
+            JSON.json(io, value)
             write(io, '\n')
         end
     finally
@@ -186,7 +186,7 @@ function write_jsonl(filename::AbstractString, data, ::DirectIteration; compress
     io = openf(filename)
     try
         for value in data
-            JSON3.write(io, value)
+            JSON.json(io, value)
             write(io, '\n')
         end
     finally
@@ -199,27 +199,33 @@ end
 
 # --------------------------------------------------------------------------------------------------
 """
-    _dict_of_json3(obj::JSON3.Object) -> Dict{Symbol, Any}
+    _dict_of_json(obj::JSON.Object) -> Dict{Symbol, Any}
 
-Recursively convert a `JSON3.Object` (from JSON3.jl) into a standard Julia `Dict` with `Symbol` keys.
+Recursively convert a `JSON.Object` (from JSON.jl) into a standard Julia `Dict` with `Symbol` keys.
 
-This function traverses the input `JSON3.Object`, converting all keys to `Symbol` and recursively converting any nested `JSON3.Object` values. Non-object values are left unchanged.
+This function traverses the input `JSON.Object`, converting all keys to `Symbol` and recursively converting any nested `JSON.Object` values. Non-object values are left unchanged.
 
 # Arguments
-- `obj::JSON3.Object`: The JSON3 object to convert.
+- `obj::JSON.Object`: The JSON object to convert.
 
 # Returns
 - `Dict{Symbol, Any}`: A Julia dictionary with symbol keys and values converted recursively.
 
 # Notes
 - This function is intended for internal use and is not exported.
-- Useful for converting parsed JSON3 objects into standard Julia dictionaries for easier manipulation.
+- Useful for converting parsed JSON objects into standard Julia dictionaries for easier manipulation.
 """
-function _dict_of_json3(d::JSON3.Object{})
+function _dict_of_json(d::JSON.Object)
     result = Dict{Symbol, Any}()
     for (k, v) in d
-        result[Symbol(k)] = v isa JSON3.Object{} ? _dict_of_json3(v) : v
+        result[Symbol(k)] = v isa JSON.Object ? _dict_of_json(v) : v
     end
     return result
+end
+
+# Keep old name as deprecated alias
+function _dict_of_json3(d)
+    Base.depwarn("`_dict_of_json3` is deprecated. Use `_dict_of_json` instead.", :_dict_of_json3)
+    _dict_of_json(d)
 end
 # --------------------------------------------------------------------------------------------------
