@@ -199,26 +199,17 @@ end
 
 # --------------------------------------------------------------------------------------------------
 """
-    _dict_of_json(obj::JSON.Object) -> Dict{Symbol, Any}
+    _dict_of_json(obj::AbstractDict) -> Dict{Symbol, Any}
 
-Recursively convert a `JSON.Object` (from JSON.jl) into a standard Julia `Dict` with `Symbol` keys.
+Recursively convert a parsed JSON dictionary into a `Dict` with `Symbol` keys.
 
-This function traverses the input `JSON.Object`, converting all keys to `Symbol` and recursively converting any nested `JSON.Object` values. Non-object values are left unchanged.
-
-# Arguments
-- `obj::JSON.Object`: The JSON object to convert.
-
-# Returns
-- `Dict{Symbol, Any}`: A Julia dictionary with symbol keys and values converted recursively.
-
-# Notes
-- This function is intended for internal use and is not exported.
-- Useful for converting parsed JSON objects into standard Julia dictionaries for easier manipulation.
+All string keys are converted to `Symbol` and nested dictionaries are converted recursively.
+Non-dict values are left unchanged.
 """
-function _dict_of_json(d::JSON.Object)
+function _dict_of_json(d::AbstractDict)
     result = Dict{Symbol, Any}()
     for (k, v) in d
-        result[Symbol(k)] = v isa JSON.Object ? _dict_of_json(v) : v
+        result[Symbol(k)] = v isa AbstractDict ? _dict_of_json(v) : v
     end
     return result
 end
