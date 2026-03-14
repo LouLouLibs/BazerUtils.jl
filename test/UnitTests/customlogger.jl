@@ -4,6 +4,7 @@
         log_paths = map(l -> l.logger.logger.stream, logger_in.loggers) |>
           (s -> filter(x -> x isa IOStream, s)) |>
           (s -> map(x -> x.name, s)) |>
+          (s -> filter(x -> contains(x, "<file "), s)) |>
           (s -> map(x -> match(r"<file (.+)>", x)[1], s))
         return unique(string.(log_paths))
     end
@@ -152,7 +153,21 @@
     @test any(map(contains("DEBUG"), filter(contains("<15>"), log_lines)))
     close_logger(logger_single, remove_files=true)
 
-   # -- logger to only one file sink 
+    # -- logger with _module=nothing (issue #10)
+    logger_single = custom_logger(
+        log_path;
+        log_format=:log4j,
+        overwrite=true)
+    log_record = (level=Base.CoreLogging.Info, message="test nothing module",
+        _module=nothing, file="test.jl", line=1, group=:test, id=:test)
+    buf = IOBuffer()
+    BazerUtils.custom_format(buf, log_record; log_format=:log4j)
+    output = String(take!(buf))
+    @test contains(output, "unknown")
+    @test contains(output, "test nothing module")
+    close_logger(logger_single, remove_files=true)
+
+   # -- logger to only one file sink
     log_path = joinpath.(tempdir(), "log")
     logger_single = custom_logger(
         log_path;
