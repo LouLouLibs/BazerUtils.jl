@@ -396,7 +396,7 @@ function format_log4j(log_record::NamedTuple;
 
     timestamp = format(now(), "yyyy-mm-dd HH:MM:SS")
     log_level = rpad(uppercase(string(log_record.level)), 5)
-    module_name = nameof(log_record._module)
+    module_name = isnothing(log_record._module) ? :unknown : nameof(log_record._module)
     file = shorten_path_str(log_record.file; strategy=shorten_path)
     prefix = shorten_path == :relative_path ? "[$(pwd())] " : ""
     line = log_record.line
