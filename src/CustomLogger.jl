@@ -698,5 +698,120 @@ end
 # --------------------------------------------------------------------------------------------------
 
 
+# --- Constants for new format_log methods ---
 
+const SYSLOG_SEVERITY = Dict(
+    Logging.Info  => 6,
+    Logging.Warn  => 4,
+    Logging.Error => 3,
+    Logging.Debug => 7
+)
+
+const JULIA_BIN = Base.julia_cmd().exec[1]
+
+
+# ==================================================================================================
+# format_log methods — one per LogFormat type
+# All write directly to `io`. All accept a pre-computed `timestamp::DateTime`.
+# ==================================================================================================
+
+function format_log(io, ::PrettyFormat, log_record::NamedTuple, timestamp::Dates.DateTime;
+        displaysize::Tuple{Int,Int}=(50,100),
+        log_date_format::AbstractString="yyyy-mm-dd",
+        log_time_format::AbstractString="HH:MM:SS",
+        kwargs...)
+
+    BOLD = "\033[1m"
+    EMPH = "\033[2m"
+    RESET = "\033[0m"
+
+    date = format(timestamp, log_date_format)
+    time_str = format(timestamp, log_time_format)
+    ts = "$BOLD$(time_str)$RESET $EMPH$date$RESET"
+
+    level_str = string(log_record.level)
+    color = get_color(log_record.level)
+    mod_name = get_module_name(log_record._module)
+    source = " @ $mod_name[$(log_record.file):$(log_record.line)]"
+    first_line = "┌ [$ts] $color$level_str$RESET | $source"
+
+    formatted = reformat_msg(log_record; displaysize=displaysize)
+    lines = split(formatted, "\n")
+
+    println(io, first_line)
+    for (i, line) in enumerate(lines)
+        prefix = i < length(lines) ? "│ " : "└ "
+        println(io, prefix, line)
+    end
+end
+
+function format_log(io, ::OnelineFormat, log_record::NamedTuple, timestamp::Dates.DateTime;
+        displaysize::Tuple{Int,Int}=(50,100),
+        shorten_path::Symbol=:relative_path,
+        kwargs...)
+
+    ts = format(timestamp, "yyyy-mm-dd HH:MM:SS")
+    level = rpad(uppercase(string(log_record.level)), 5)
+    mod_name = get_module_name(log_record._module)
+    file = shorten_path_str(log_record.file; strategy=shorten_path)
+    prefix = shorten_path === :relative_path ? "[$(pwd())] " : ""
+    msg = reformat_msg(log_record; displaysize=displaysize) |> msg_to_singleline
+
+    println(io, "$prefix$ts $level $mod_name[$file:$(log_record.line)] $msg")
+end
+
+function format_log(io, ::SyslogFormat, log_record::NamedTuple, timestamp::Dates.DateTime;
+        displaysize::Tuple{Int,Int}=(50,100),
+        kwargs...)
+
+    ts = Dates.format(timestamp, "yyyy-mm-ddTHH:MM:SS")
+    severity = get(SYSLOG_SEVERITY, log_record.level, 6)
+    pri = (1 * 8) + severity
+    hostname = gethostname()
+    pid = getpid()
+    msg = reformat_msg(log_record; displaysize=displaysize) |> msg_to_singleline
+
+    println(io, "<$pri>1 $ts $hostname $JULIA_BIN $pid - - $msg")
+end
+
+function format_log(io, ::JsonFormat, log_record::NamedTuple, timestamp::Dates.DateTime;
+        displaysize::Tuple{Int,Int}=(50,100),
+        kwargs...)
+
+    ts = Dates.format(timestamp, "yyyy-mm-ddTHH:MM:SS")
+    level = json_escape(string(log_record.level))
+    mod_name = json_escape(get_module_name(log_record._module))
+    file = json_escape(string(log_record.file))
+    line = log_record.line
+    msg = json_escape(reformat_msg(log_record; displaysize=displaysize))
+
+    println(io, "{\"timestamp\":\"$ts\",\"level\":\"$level\",\"module\":\"$mod_name\",\"file\":\"$file\",\"line\":$line,\"message\":\"$msg\"}")
+end
+
+function format_log(io, ::LogfmtFormat, log_record::NamedTuple, timestamp::Dates.DateTime;
+        displaysize::Tuple{Int,Int}=(50,100),
+        kwargs...)
+
+    ts = Dates.format(timestamp, "yyyy-mm-ddTHH:MM:SS")
+    level = string(log_record.level)
+    mod_name = get_module_name(log_record._module)
+    file = logfmt_escape(string(log_record.file))
+    msg = logfmt_escape(reformat_msg(log_record; displaysize=displaysize))
+
+    println(io, "ts=$ts level=$level module=$mod_name file=$file line=$(log_record.line) msg=$msg")
+end
+
+function format_log(io, ::Log4jStandardFormat, log_record::NamedTuple, timestamp::Dates.DateTime;
+        displaysize::Tuple{Int,Int}=(50,100),
+        kwargs...)
+
+    ts = format(timestamp, "yyyy-mm-dd HH:MM:SS")
+    millis = lpad(Dates.millisecond(timestamp), 3, '0')
+    level = rpad(uppercase(string(log_record.level)), 5)
+    thread_id = Threads.threadid()
+    mod_name = get_module_name(log_record._module)
+    msg = reformat_msg(log_record; displaysize=displaysize) |> msg_to_singleline
+
+    println(io, "$ts,$millis $level [$thread_id] $mod_name - $msg")
+end
 

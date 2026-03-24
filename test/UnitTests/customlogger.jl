@@ -91,6 +91,141 @@
         @test_throws ArgumentError BazerUtils.get_log_filenames(["a.log", "b.log", "c.log", "d.log", "e.log"])
     end
 
+    @testset "format_log methods" begin
+        T = Dates.DateTime(2024, 1, 15, 14, 30, 0)
+        log_record = (level=Base.CoreLogging.Info, message="test message",
+            _module=BazerUtils, file="/src/app.jl", line=42, group=:test, id=:test)
+        nothing_record = (level=Base.CoreLogging.Info, message="nothing mod",
+            _module=nothing, file="test.jl", line=1, group=:test, id=:test)
+
+        @testset "PrettyFormat" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.PrettyFormat(), log_record, T;
+                displaysize=(50,100))
+            output = String(take!(buf))
+            @test contains(output, "test message")
+            @test contains(output, "14:30:00")
+            @test contains(output, "BazerUtils")
+            @test contains(output, "┌")
+            @test contains(output, "└")
+        end
+
+        @testset "PrettyFormat _module=nothing" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.PrettyFormat(), nothing_record, T;
+                displaysize=(50,100))
+            output = String(take!(buf))
+            @test contains(output, "unknown")
+        end
+
+        @testset "OnelineFormat" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.OnelineFormat(), log_record, T;
+                displaysize=(50,100), shorten_path=:no)
+            output = String(take!(buf))
+            @test contains(output, "INFO")
+            @test contains(output, "2024-01-15 14:30:00")
+            @test contains(output, "BazerUtils")
+            @test contains(output, "test message")
+        end
+
+        @testset "OnelineFormat _module=nothing" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.OnelineFormat(), nothing_record, T;
+                displaysize=(50,100), shorten_path=:no)
+            output = String(take!(buf))
+            @test contains(output, "unknown")
+        end
+
+        @testset "SyslogFormat" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.SyslogFormat(), log_record, T;
+                displaysize=(50,100))
+            output = String(take!(buf))
+            @test contains(output, "<14>")  # facility=1, severity=6 -> (1*8)+6=14
+            @test contains(output, "2024-01-15T14:30:00")
+            @test contains(output, "test message")
+        end
+
+        @testset "SyslogFormat _module=nothing" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.SyslogFormat(), nothing_record, T;
+                displaysize=(50,100))
+            output = String(take!(buf))
+            @test contains(output, "nothing mod")
+            @test !contains(output, "nothing[")
+        end
+
+        @testset "JsonFormat" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.JsonFormat(), log_record, T;
+                displaysize=(50,100))
+            output = strip(String(take!(buf)))
+            @test startswith(output, "{")
+            @test endswith(output, "}")
+            @test contains(output, "\"timestamp\":\"2024-01-15T14:30:00\"")
+            @test contains(output, "\"level\":\"Info\"")
+            @test contains(output, "\"module\":\"BazerUtils\"")
+            @test contains(output, "\"message\":\"test message\"")
+            @test contains(output, "\"line\":42")
+            parsed = JSON.parse(output)
+            @test parsed["level"] == "Info"
+            @test parsed["line"] == 42
+        end
+
+        @testset "JsonFormat escaping" begin
+            escape_record = (level=Base.CoreLogging.Warn, message="line1\nline2 \"quoted\"",
+                _module=nothing, file="test.jl", line=1, group=:test, id=:test)
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.JsonFormat(), escape_record, T;
+                displaysize=(50,100))
+            output = strip(String(take!(buf)))
+            parsed = JSON.parse(output)
+            @test parsed["message"] == "line1\nline2 \"quoted\""
+            @test parsed["module"] == "unknown"
+        end
+
+        @testset "LogfmtFormat" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.LogfmtFormat(), log_record, T;
+                displaysize=(50,100))
+            output = strip(String(take!(buf)))
+            @test contains(output, "ts=2024-01-15T14:30:00")
+            @test contains(output, "level=Info")
+            @test contains(output, "module=BazerUtils")
+            @test contains(output, "msg=\"test message\"")
+        end
+
+        @testset "LogfmtFormat _module=nothing" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.LogfmtFormat(), nothing_record, T;
+                displaysize=(50,100))
+            output = strip(String(take!(buf)))
+            @test contains(output, "module=unknown")
+        end
+
+        @testset "Log4jStandardFormat" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.Log4jStandardFormat(), log_record, T;
+                displaysize=(50,100))
+            output = strip(String(take!(buf)))
+            @test contains(output, "2024-01-15 14:30:00,000")
+            @test contains(output, "INFO ")
+            @test contains(output, "BazerUtils")
+            @test contains(output, " - ")
+            @test contains(output, "test message")
+        end
+
+        @testset "Log4jStandardFormat _module=nothing" begin
+            buf = IOBuffer()
+            BazerUtils.format_log(buf, BazerUtils.Log4jStandardFormat(), nothing_record, T;
+                displaysize=(50,100))
+            output = strip(String(take!(buf)))
+            @test contains(output, "unknown")
+            @test contains(output, "nothing mod")
+        end
+    end
+
     # -- logger with everything in one place ...
     logger_single = custom_logger(
         log_path;
