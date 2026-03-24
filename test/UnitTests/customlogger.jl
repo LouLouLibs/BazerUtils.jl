@@ -11,8 +11,8 @@
 
     function close_logger(logger::TeeLogger; remove_files::Bool=false)
         # Get filenames before closing
-        filenames = get_log_names(logger)        
-        
+        filenames = get_log_names(logger)
+
         # Close all IOStreams
         for min_logger in logger.loggers
             stream = min_logger.logger.logger.stream
@@ -229,7 +229,7 @@
     # -- logger with everything in one place ...
     logger_single = custom_logger(
         log_path;
-        overwrite=true) 
+        overwrite=true)
     @error "ERROR MESSAGE"
     @warn "WARN MESSAGE"
     @info "INFO MESSAGE"
@@ -242,10 +242,10 @@
     @test contains(log_content, "DEBUG MESSAGE")
     close_logger(logger_single, remove_files=true)
 
-    # -- logger across multiple files ... 
+    # -- logger across multiple files ...
     logger_multiple = custom_logger(
         log_path;
-        overwrite=true, create_log_files=true) 
+        overwrite=true, create_log_files=true)
     log_files = get_log_names(logger_multiple)
     @error "ERROR MESSAGE"
     @warn "WARN MESSAGE"
@@ -294,8 +294,8 @@
     # -- logger with formatting
     logger_single = custom_logger(
         log_path;
-        log_format=:log4j,
-        overwrite=true) 
+        log_format=:oneline,
+        overwrite=true)
     @error "ERROR MESSAGE"
     @warn "WARN MESSAGE"
     @info "INFO MESSAGE"
@@ -311,9 +311,9 @@
     # -- logger with formatting and truncation
     logger_single = custom_logger(
         log_path;
-        log_format=:log4j,
+        log_format=:oneline,
         shorten_path=:truncate_middle,
-        overwrite=true) 
+        overwrite=true)
     @error "ERROR MESSAGE"
     @warn "WARN MESSAGE"
     @info "INFO MESSAGE"
@@ -334,7 +334,7 @@
         log_path;
         log_format=:syslog,
         shorten_path=:truncate_middle,
-        overwrite=true) 
+        overwrite=true)
     @error "ERROR MESSAGE"
     @warn "WARN MESSAGE"
     @info "INFO MESSAGE"
@@ -343,7 +343,7 @@
     log_file = get_log_names(logger_single)[1]
     log_content = read(log_file, String)
     # println(log_content)
-    # we should test for the lines 
+    # we should test for the lines
     log_lines = split(log_content, "\n")
     @test all(map(contains("ERROR"), filter(contains("<11>"), log_lines)))
     @test all(map(contains("WARN"), filter(contains("<12>"), log_lines)))
@@ -354,12 +354,13 @@
     # -- logger with _module=nothing (issue #10)
     logger_single = custom_logger(
         log_path;
-        log_format=:log4j,
+        log_format=:oneline,
         overwrite=true)
     log_record = (level=Base.CoreLogging.Info, message="test nothing module",
         _module=nothing, file="test.jl", line=1, group=:test, id=:test)
     buf = IOBuffer()
-    BazerUtils.custom_format(buf, log_record; log_format=:log4j)
+    BazerUtils.custom_format(buf, BazerUtils.OnelineFormat(), log_record;
+        shorten_path=:no)
     output = String(take!(buf))
     @test contains(output, "unknown")
     @test contains(output, "test nothing module")
@@ -369,23 +370,158 @@
     log_path = joinpath.(tempdir(), "log")
     logger_single = custom_logger(
         log_path;
-        create_log_files=true, overwrite=true, 
+        create_log_files=true, overwrite=true,
         file_loggers = [:debug, :info])
     @debug "DEBUG MESSAGE"
     @info "INFO MESSAGE"
     log_file = get_log_names(logger_single)
     log_content = read.(log_file, String)
     @test contains.(log_content, r"DEBUG .* DEBUG MESSAGE") == [true, false]
-    @test contains.(log_content, r"INFO .* INFO MESSAGE") == [true, true]
+    @test contains.(log_content, r"INFO .* INFO MESSAGE") == [false, true]
     close_logger(logger_single, remove_files=true)
 
+    # -- exact level filtering (default: cascading_loglevels=false)
+    log_path_cl = joinpath(tempdir(), "log_cascading")
+    logger_exact = custom_logger(
+        log_path_cl;
+        overwrite=true, create_log_files=true)
+    @error "ONLY_ERROR"
+    @warn "ONLY_WARN"
+    @info "ONLY_INFO"
+    @debug "ONLY_DEBUG"
+    log_files_exact = get_log_names(logger_exact)
+    content_exact = read.(log_files_exact, String)
+    @test contains(content_exact[1], "ONLY_ERROR")
+    @test contains(content_exact[2], "ONLY_WARN")
+    @test contains(content_exact[3], "ONLY_INFO")
+    @test contains(content_exact[4], "ONLY_DEBUG")
+    @test !contains(content_exact[1], "ONLY_WARN")
+    @test !contains(content_exact[1], "ONLY_INFO")
+    @test !contains(content_exact[1], "ONLY_DEBUG")
+    @test !contains(content_exact[2], "ONLY_ERROR")
+    @test !contains(content_exact[2], "ONLY_INFO")
+    @test !contains(content_exact[2], "ONLY_DEBUG")
+    @test !contains(content_exact[3], "ONLY_ERROR")
+    @test !contains(content_exact[3], "ONLY_WARN")
+    @test !contains(content_exact[3], "ONLY_DEBUG")
+    @test !contains(content_exact[4], "ONLY_ERROR")
+    @test !contains(content_exact[4], "ONLY_WARN")
+    @test !contains(content_exact[4], "ONLY_INFO")
+    close_logger(logger_exact, remove_files=true)
+
+    # -- cascading level filtering (cascading_loglevels=true, old behavior)
+    logger_cascade = custom_logger(
+        log_path_cl;
+        overwrite=true, create_log_files=true,
+        cascading_loglevels=true)
+    @error "CASCADE_ERROR"
+    @warn "CASCADE_WARN"
+    @info "CASCADE_INFO"
+    @debug "CASCADE_DEBUG"
+    log_files_cascade = get_log_names(logger_cascade)
+    content_cascade = read.(log_files_cascade, String)
+    @test contains(content_cascade[1], "CASCADE_ERROR")
+    @test !contains(content_cascade[1], "CASCADE_WARN")
+    @test contains(content_cascade[2], "CASCADE_WARN")
+    @test contains(content_cascade[2], "CASCADE_ERROR")
+    @test contains(content_cascade[3], "CASCADE_INFO")
+    @test contains(content_cascade[3], "CASCADE_WARN")
+    @test contains(content_cascade[3], "CASCADE_ERROR")
+    @test contains(content_cascade[4], "CASCADE_DEBUG")
+    @test contains(content_cascade[4], "CASCADE_INFO")
+    @test contains(content_cascade[4], "CASCADE_WARN")
+    @test contains(content_cascade[4], "CASCADE_ERROR")
+    close_logger(logger_cascade, remove_files=true)
+
+    # -- JSON format logger
+    log_path_fmt = joinpath(tempdir(), "log_fmt")
+    logger_json = custom_logger(
+        log_path_fmt;
+        log_format=:json, overwrite=true)
+    @error "JSON_ERROR"
+    @info "JSON_INFO"
+    log_file_json = get_log_names(logger_json)[1]
+    json_lines = filter(!isempty, split(read(log_file_json, String), "\n"))
+    for line in json_lines
+        parsed = JSON.parse(line)
+        @test haskey(parsed, "timestamp")
+        @test haskey(parsed, "level")
+        @test haskey(parsed, "module")
+        @test haskey(parsed, "message")
+    end
+    close_logger(logger_json, remove_files=true)
+
+    # -- logfmt format logger
+    logger_logfmt = custom_logger(
+        log_path_fmt;
+        log_format=:logfmt, overwrite=true)
+    @error "LOGFMT_ERROR"
+    @info "LOGFMT_INFO"
+    log_file_logfmt = get_log_names(logger_logfmt)[1]
+    logfmt_content = read(log_file_logfmt, String)
+    @test contains(logfmt_content, "level=Error")
+    @test contains(logfmt_content, "level=Info")
+    @test contains(logfmt_content, r"ts=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+    @test contains(logfmt_content, "msg=")
+    close_logger(logger_logfmt, remove_files=true)
+
+    # -- log4j_standard format logger
+    logger_l4js = custom_logger(
+        log_path_fmt;
+        log_format=:log4j_standard, overwrite=true)
+    @error "L4JS_ERROR"
+    @info "L4JS_INFO"
+    log_file_l4js = get_log_names(logger_l4js)[1]
+    l4js_content = read(log_file_l4js, String)
+    @test contains(l4js_content, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} ERROR")
+    @test contains(l4js_content, r"INFO .* - L4JS_INFO")
+    @test contains(l4js_content, " - ")
+    close_logger(logger_l4js, remove_files=true)
+
+    # -- unknown format throws
+    @test_throws ArgumentError custom_logger(
+        joinpath(tempdir(), "log_bad"); log_format=:banana, overwrite=true)
+
+    # -- :log4j deprecated alias still works
+    logger_deprecated = custom_logger(
+        log_path_fmt;
+        log_format=:log4j, overwrite=true)
+    @info "DEPRECATED_TEST"
+    log_file_dep = get_log_names(logger_deprecated)[1]
+    dep_content = read(log_file_dep, String)
+    @test contains(dep_content, "DEPRECATED_TEST")
+    close_logger(logger_deprecated, remove_files=true)
+
+    # -- thread safety: concurrent logging produces complete lines
+    log_path_thread = joinpath(tempdir(), "log_thread")
+    logger_thread = custom_logger(
+        log_path_thread;
+        log_format=:json, overwrite=true)
+    n_tasks = 10
+    n_msgs = 50
+    @sync for t in 1:n_tasks
+        Threads.@spawn begin
+            for m in 1:n_msgs
+                @info "task=$t msg=$m"
+            end
+        end
+    end
+    log_file_thread = get_log_names(logger_thread)[1]
+    # Flush all file streams
+    for lg in logger_thread.loggers
+        try
+            s = lg.logger.logger.stream
+            s isa IOStream && flush(s)
+        catch; end
+    end
+    thread_lines = filter(!isempty, split(read(log_file_thread, String), "\n"))
+    # Every line should be valid JSON (no interleaving)
+    for line in thread_lines
+        @test startswith(line, "{")
+        @test endswith(line, "}")
+        parsed = JSON.parse(line)
+        @test haskey(parsed, "message")
+    end
+    close_logger(logger_thread, remove_files=true)
+
 end
-
-
-
-
-
-
-
-
-
