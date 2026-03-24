@@ -28,7 +28,40 @@
 
     log_path = joinpath.(tempdir(), "log")
 
-    # -- logger with everything in one place ... 
+    @testset "resolve_format" begin
+        @test BazerUtils.resolve_format(:pretty) isa BazerUtils.PrettyFormat
+        @test BazerUtils.resolve_format(:oneline) isa BazerUtils.OnelineFormat
+        @test BazerUtils.resolve_format(:syslog) isa BazerUtils.SyslogFormat
+        @test BazerUtils.resolve_format(:json) isa BazerUtils.JsonFormat
+        @test BazerUtils.resolve_format(:logfmt) isa BazerUtils.LogfmtFormat
+        @test BazerUtils.resolve_format(:log4j_standard) isa BazerUtils.Log4jStandardFormat
+        @test_throws ArgumentError BazerUtils.resolve_format(:invalid_format)
+        # :log4j is deprecated alias for :oneline
+        @test BazerUtils.resolve_format(:log4j) isa BazerUtils.OnelineFormat
+    end
+
+    @testset "get_module_name" begin
+        @test BazerUtils.get_module_name(nothing) == "unknown"
+        @test BazerUtils.get_module_name(Base) == "Base"
+        @test BazerUtils.get_module_name(Main) == "Main"
+    end
+
+    @testset "json_escape" begin
+        @test BazerUtils.json_escape("hello") == "hello"
+        @test BazerUtils.json_escape("line1\nline2") == "line1\\nline2"
+        @test BazerUtils.json_escape("say \"hi\"") == "say \\\"hi\\\""
+        @test BazerUtils.json_escape("back\\slash") == "back\\\\slash"
+        @test BazerUtils.json_escape("tab\there") == "tab\\there"
+    end
+
+    @testset "logfmt_escape" begin
+        @test BazerUtils.logfmt_escape("simple") == "simple"
+        @test BazerUtils.logfmt_escape("has space") == "\"has space\""
+        @test BazerUtils.logfmt_escape("has\"quote") == "\"has\\\"quote\""
+        @test BazerUtils.logfmt_escape("has=equals") == "\"has=equals\""
+    end
+
+    # -- logger with everything in one place ...
     logger_single = custom_logger(
         log_path;
         overwrite=true) 

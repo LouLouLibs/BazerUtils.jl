@@ -1,15 +1,105 @@
-# --------------------------------------------------------------------------------------------------
-
-# CustomLogger.jl
-
-# Function to create a custom logger
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
+# CustomLogger.jl — Custom multi-sink logger with per-level filtering and pluggable formats
+# ==================================================================================================
 
 
-# --------------------------------------------------------------------------------------------------
-# Exported function
-# custom_logger
-# --------------------------------------------------------------------------------------------------
+# --- Format types (multiple dispatch instead of if/elseif) ---
+
+abstract type LogFormat end
+struct PrettyFormat <: LogFormat end
+struct OnelineFormat <: LogFormat end
+struct SyslogFormat <: LogFormat end
+struct JsonFormat <: LogFormat end
+struct LogfmtFormat <: LogFormat end
+struct Log4jStandardFormat <: LogFormat end
+
+const VALID_FORMATS = "Valid options: :pretty, :oneline, :syslog, :json, :logfmt, :log4j_standard"
+
+"""
+    resolve_format(s::Symbol) -> LogFormat
+
+Map a format symbol to its LogFormat type. `:log4j` is a deprecated alias for `:oneline`.
+"""
+function resolve_format(s::Symbol)::LogFormat
+    s === :pretty && return PrettyFormat()
+    s === :oneline && return OnelineFormat()
+    s === :log4j && (Base.depwarn(
+        ":log4j is deprecated, use :oneline for single-line format or :log4j_standard for Apache Log4j format. :log4j will be removed in a future major version.",
+        :log4j); return OnelineFormat())
+    s === :syslog && return SyslogFormat()
+    s === :json && return JsonFormat()
+    s === :logfmt && return LogfmtFormat()
+    s === :log4j_standard && return Log4jStandardFormat()
+    throw(ArgumentError("Unknown log_format: :$s. $VALID_FORMATS"))
+end
+
+
+# --- Helper functions ---
+
+"""
+    get_module_name(mod) -> String
+
+Extract module name as a string, returning "unknown" for `nothing`.
+"""
+get_module_name(mod::Module) = string(nameof(mod))
+get_module_name(::Nothing) = "unknown"
+
+"""
+    reformat_msg(log_record; displaysize=(50,100)) -> String
+
+Convert log record message to a string. Strings pass through; other types
+are rendered via `show` with display size limits.
+"""
+function reformat_msg(log_record; displaysize::Tuple{Int,Int}=(50,100))::String
+    msg = log_record.message
+    msg isa AbstractString && return String(msg)
+    buf = IOBuffer()
+    show(IOContext(buf, :limit => true, :compact => true, :displaysize => displaysize),
+         "text/plain", msg)
+    return String(take!(buf))
+end
+
+"""
+    msg_to_singleline(message::AbstractString) -> String
+
+Collapse a multi-line message to a single line, using ` | ` as separator.
+"""
+function msg_to_singleline(message::AbstractString)::String
+    message |>
+        str -> replace(str, r"\"\"\"[\r\n\s]*(.+?)[\r\n\s]*\"\"\""s => s"\1") |>
+        str -> replace(str, r"\n\s*" => " | ") |>
+        str -> replace(str, r"\|\s*\|" => "|") |>
+        str -> replace(str, r"\s*\|\s*" => " | ") |>
+        str -> replace(str, r"\|\s*$" => "") |>
+        strip |> String
+end
+
+"""
+    json_escape(s::AbstractString) -> String
+
+Escape a string for inclusion in a JSON value (without surrounding quotes).
+"""
+function json_escape(s::AbstractString)::String
+    s = replace(s, '\\' => "\\\\")
+    s = replace(s, '"' => "\\\"")
+    s = replace(s, '\n' => "\\n")
+    s = replace(s, '\r' => "\\r")
+    s = replace(s, '\t' => "\\t")
+    return s
+end
+
+"""
+    logfmt_escape(s::AbstractString) -> String
+
+Format a value for logfmt output. Quotes the value if it contains spaces, equals, or quotes.
+"""
+function logfmt_escape(s::AbstractString)::String
+    needs_quoting = contains(s, ' ') || contains(s, '"') || contains(s, '=')
+    if needs_quoting
+        return "\"" * replace(s, '"' => "\\\"") * "\""
+    end
+    return s
+end
 
 
 # --------------------------------------------------------------------------------------------------
@@ -321,43 +411,6 @@ function custom_format(io, log_record::NamedTuple;
 end
     
 
-# --- general functions
-"""
-    reformat_msg
-    # we view strings as simple and everything else as complex
-"""
-function reformat_msg(log_record;
-        displaysize::Tuple{Int,Int}=(50,100),
-        log_format::Symbol=:pretty)::AbstractString
-
-    if log_record.message isa AbstractString
-        return log_record.message
-    else
-        buf = IOBuffer()
-        if log_format == :pretty
-            show(IOContext(buf, :limit=>true, :compact=>true, :color=>true, :displaysize=>displaysize),
-                "text/plain", log_record.message)
-        else #  log_format == :log4j
-            show(IOContext(buf, :limit => true, :compact => true, :displaysize => (50, 100)),
-                "text/plain", log_record.message)
-        end
-        formatted_message = String(take!(buf))
-    end
-    return formatted_message
-end
-
-
-function msg_to_singleline(message::AbstractString)::AbstractString
-    message |>
-        str -> replace(str, r"\"\"\"[\r\n\s]*(.+?)[\r\n\s]*\"\"\""s => s"\1") |>
-        str -> replace(str, r"\n\s*" => " | ") |>
-        str -> replace(str, r"\|\s*\|" => "|") |>
-        str -> replace(str, r"\s*\|\s*" => " | ") |>
-        str -> replace(str, r"\|\s*$" => "") |>
-        strip
-end
-
-
 # --- pretty format
 function format_pretty(log_record::NamedTuple;
     log_date_format::AbstractString="yyyy-mm-dd", 
@@ -382,7 +435,7 @@ function format_pretty(log_record::NamedTuple;
     # Prepare the first part of the message prefix
     first_line = "┌ [$timestamp] $color$level\033[0m | $source_info"
 
-    formatted_message = reformat_msg(log_record, log_format=:pretty)
+    formatted_message = reformat_msg(log_record)
 
     message_lines = split(formatted_message, "\n")
 
@@ -400,7 +453,7 @@ function format_log4j(log_record::NamedTuple;
     file = shorten_path_str(log_record.file; strategy=shorten_path)
     prefix = shorten_path == :relative_path ? "[$(pwd())] " : ""
     line = log_record.line
-    formatted_message = reformat_msg(log_record, log_format=:log4j)
+    formatted_message = reformat_msg(log_record)
 
     log_entry = "$prefix$timestamp $log_level $module_name[$file:$line] $(replace(formatted_message, "\n" => " | "))"
     
@@ -440,7 +493,7 @@ function format_syslog(log_record::NamedTuple)::AbstractString
     # else
     structured_data = "-"
     # end
-    formatted_message = reformat_msg(log_record, log_format=:syslog)
+    formatted_message = reformat_msg(log_record)
 
     # we put everything on one line for clear logging ... 
     log_entry = "<$pri>1 $timestamp $hostname $app_name $pid $msg_id $structured_data $(replace(formatted_message, "\n" => " | "))"
