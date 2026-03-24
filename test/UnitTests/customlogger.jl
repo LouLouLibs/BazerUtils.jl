@@ -164,12 +164,12 @@
             @test startswith(output, "{")
             @test endswith(output, "}")
             @test contains(output, "\"timestamp\":\"2024-01-15T14:30:00\"")
-            @test contains(output, "\"level\":\"Info\"")
+            @test contains(output, "\"level\":\"INFO\"")
             @test contains(output, "\"module\":\"BazerUtils\"")
             @test contains(output, "\"message\":\"test message\"")
             @test contains(output, "\"line\":42")
             parsed = JSON.parse(output)
-            @test parsed["level"] == "Info"
+            @test parsed["level"] == "INFO"
             @test parsed["line"] == 42
         end
 
@@ -191,7 +191,7 @@
                 displaysize=(50,100))
             output = strip(String(take!(buf)))
             @test contains(output, "ts=2024-01-15T14:30:00")
-            @test contains(output, "level=Info")
+            @test contains(output, "level=info")
             @test contains(output, "module=BazerUtils")
             @test contains(output, "msg=\"test message\"")
         end
@@ -459,8 +459,8 @@
     @info "LOGFMT_INFO"
     log_file_logfmt = get_log_names(logger_logfmt)[1]
     logfmt_content = read(log_file_logfmt, String)
-    @test contains(logfmt_content, "level=Error")
-    @test contains(logfmt_content, "level=Info")
+    @test contains(logfmt_content, "level=error")
+    @test contains(logfmt_content, "level=info")
     @test contains(logfmt_content, r"ts=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
     @test contains(logfmt_content, "msg=")
     close_logger(logger_logfmt, remove_files=true)

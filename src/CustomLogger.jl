@@ -680,7 +680,7 @@ function format_log(io, ::JsonFormat, log_record::NamedTuple, timestamp::Dates.D
         kwargs...)
 
     ts = Dates.format(timestamp, "yyyy-mm-ddTHH:MM:SS")
-    level = json_escape(string(log_record.level))
+    level = json_escape(uppercase(string(log_record.level)))
     mod_name = json_escape(get_module_name(log_record._module))
     file = json_escape(string(log_record.file))
     line = log_record.line
@@ -694,10 +694,10 @@ function format_log(io, ::LogfmtFormat, log_record::NamedTuple, timestamp::Dates
         kwargs...)
 
     ts = Dates.format(timestamp, "yyyy-mm-ddTHH:MM:SS")
-    level = string(log_record.level)
+    level = lowercase(string(log_record.level))
     mod_name = get_module_name(log_record._module)
     file = logfmt_escape(string(log_record.file))
-    msg = logfmt_escape(reformat_msg(log_record; displaysize=displaysize))
+    msg = logfmt_escape(reformat_msg(log_record; displaysize=displaysize) |> msg_to_singleline)
 
     println(io, "ts=$ts level=$level module=$mod_name file=$file line=$(log_record.line) msg=$msg")
 end
