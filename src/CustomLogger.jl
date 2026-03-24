@@ -20,6 +20,8 @@ const VALID_FORMATS = "Valid options: :pretty, :oneline, :syslog, :json, :logfmt
 
 Map a format symbol to its LogFormat type. `:log4j` is a deprecated alias for `:oneline`.
 """
+# TODO (March 2027): Remove :log4j alias for :oneline. Rename :log4j_standard to :log4j.
+# This is a breaking change requiring a major version bump.
 function resolve_format(s::Symbol)::LogFormat
     s === :pretty && return PrettyFormat()
     s === :oneline && return OnelineFormat()
