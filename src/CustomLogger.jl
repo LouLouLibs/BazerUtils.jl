@@ -102,58 +102,89 @@ function logfmt_escape(s::AbstractString)::String
 end
 
 
-# --------------------------------------------------------------------------------------------------
+# --- LogSink infrastructure ---
+
 abstract type LogSink end
 
-# Helper function to get filenames
-function get_log_filenames(filename::AbstractString; 
-    file_loggers::Vector{Symbol}=[:error, :warn, :info, :debug], 
-    create_files::Bool=false)
+# Keep the active sink alive so the finalizer does not close it prematurely
+# while the global logger is still writing to its IO handles.
+const _active_sink = Ref{Union{Nothing, LogSink}}(nothing)
 
+"""
+    get_log_filenames(filename; file_loggers, create_files) -> Vector{String}
+
+Generate log file paths. When `create_files=true`, creates `filename_level.log` per level.
+When `false`, repeats `filename` for all levels.
+"""
+function get_log_filenames(filename::AbstractString;
+        file_loggers::Vector{Symbol}=[:error, :warn, :info, :debug],
+        create_files::Bool=false)
     if create_files
-        files = map(f -> "$(filename)_$(string(f)).log", file_loggers)
-        # files = ["$(filename)_error.log", "$(filename)_warn.log",
-        #          "$(filename)_info.log", "$(filename)_debug.log"]
+        return [string(filename, "_", string(f), ".log") for f in file_loggers]
     else
-        files = repeat([filename], length(file_loggers))
+        return repeat([filename], length(file_loggers))
     end
+end
+
+function get_log_filenames(files::Vector{<:AbstractString};
+        file_loggers::Vector{Symbol}=[:error, :warn, :info, :debug])
+    n = length(file_loggers)
+    length(files) != n && throw(ArgumentError(
+        "Expected exactly $n file paths (one per logger: $(join(file_loggers, ", "))), got $(length(files))"))
     return files
 end
 
-function get_log_filenames(files::Vector{<:AbstractString})
-    length(files) > 4  && (@warn "Please provide adequate number of logs (4 for sinks)")
-    length(files) < 4  && throw(ArgumentError("Must provide at least 4 file paths"))
-    return files[1:min(4, length(files))]
-end
+"""
+    FileSink <: LogSink
 
-struct FileSink <: LogSink
+File-based log sink with per-stream locking for thread safety.
+
+When all files point to the same path (single-file mode), IO handles and locks are
+deduplicated — one IO and one lock shared across all slots.
+"""
+mutable struct FileSink <: LogSink
     files::Vector{String}
     ios::Vector{IO}
+    locks::Vector{ReentrantLock}
 
-    function FileSink(filename::AbstractString; 
-            file_loggers::Vector{Symbol}=[:error, :warn, :info, :debug], 
+    function FileSink(filename::AbstractString;
+            file_loggers::Vector{Symbol}=[:error, :warn, :info, :debug],
             create_files::Bool=false)
-
         files = get_log_filenames(filename; file_loggers=file_loggers, create_files=create_files)
         if create_files
-            @info "Creating $(length(files)) different files for logging ... \n \u2B91\t$(join(files, "\n\t"))"
+            @info "Creating $(length(files)) log files:\n$(join(string.(" \u2B91 ", files), "\n"))"
         else
-           @info "Only one sink provided ... \n\tAll logs will be written without differentiation on $filename"
+            @info "Single log sink: all levels writing to $filename"
         end
-        ios = [open(f, "a") for f in files]
-        new(files, ios)
+        # Deduplicate: open each unique path once, share IO + lock
+        unique_paths = unique(files)
+        path_to_io = Dict(p => open(p, "a") for p in unique_paths)
+        path_to_lock = Dict(p => ReentrantLock() for p in unique_paths)
+        ios = [path_to_io[f] for f in files]
+        locks = [path_to_lock[f] for f in files]
+        obj = new(files, ios, locks)
+        finalizer(close, obj)
+        return obj
     end
 
-    function FileSink(files::Vector{<:AbstractString})
-        actual_files = get_log_filenames(files)
-        ios = [open(f, "a") for f in actual_files]
-        new(actual_files, ios)
+    function FileSink(files::Vector{<:AbstractString};
+            file_loggers::Vector{Symbol}=[:error, :warn, :info, :debug])
+        actual_files = get_log_filenames(files; file_loggers=file_loggers)
+        unique_paths = unique(actual_files)
+        path_to_io = Dict(p => open(p, "a") for p in unique_paths)
+        path_to_lock = Dict(p => ReentrantLock() for p in unique_paths)
+        ios = [path_to_io[f] for f in actual_files]
+        locks = [path_to_lock[f] for f in actual_files]
+        obj = new(actual_files, ios, locks)
+        finalizer(close, obj)
+        return obj
     end
 end
 
-# Add finalizer to handle cleanup
 function Base.close(sink::FileSink)
-    foreach(close, sink.ios)
+    for io in unique(sink.ios)
+        io !== stdout && io !== stderr && isopen(io) && close(io)
+    end
 end
 # --------------------------------------------------------------------------------------------------
 
@@ -206,8 +237,9 @@ function custom_logger(
     verbose::Bool=false)
 
     # warning if some non imported get filtered ...
-    imported_modules = filter((x) -> typeof(getfield(Main, x)) <: Module && x ≠ :Main,
-        names(Main, imported=true))
+    imported_modules = filter(names(Main, imported=true)) do x
+        x ≠ :Main && isdefined(Main, x) && typeof(getfield(Main, x)) <: Module
+    end
     all_filters = Symbol[x for x in unique(vcat(
         something(filtered_modules_specific, Symbol[]),
         something(filtered_modules_all, Symbol[]))) if !isnothing(x)]
@@ -254,10 +286,11 @@ function custom_logger(
     demux_logger = create_demux_logger(sink, file_loggers,
         module_absolute_message_filter, module_specific_message_filter, format_log_file, format_log_stdout)
 
-
-
     global_logger(demux_logger)
 
+    # Keep sink alive so the finalizer does not close its IO handles while
+    # the global logger is still using them.
+    _active_sink[] = sink
 
     return demux_logger
 end
@@ -276,8 +309,11 @@ function custom_logger(
 
     file_loggers_array = file_loggers isa Symbol ? [file_loggers] : file_loggers
 
-    files = get_log_filenames(filename; 
-        file_loggers=file_loggers_array, create_files=create_log_files)
+    files = if filename isa Vector
+        get_log_filenames(filename; file_loggers=file_loggers_array)
+    else
+        get_log_filenames(filename; file_loggers=file_loggers_array, create_files=create_log_files)
+    end
 
     # create directory if needed and bool true
     # returns an error if directory does not exist and bool false
@@ -292,8 +328,11 @@ function custom_logger(
     # Handle cleanup if needed
     overwrite && foreach(f -> rm(f, force=true), files)
     # Create sink
-    sink = FileSink(filename; 
-        file_loggers=file_loggers_array, create_files=create_log_files)
+    sink = if filename isa Vector
+        FileSink(filename; file_loggers=file_loggers_array)
+    else
+        FileSink(filename; file_loggers=file_loggers_array, create_files=create_log_files)
+    end
     # Call main logger function
     custom_logger(sink; file_loggers=file_loggers, kwargs...)
 end

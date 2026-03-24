@@ -61,6 +61,36 @@
         @test BazerUtils.logfmt_escape("has=equals") == "\"has=equals\""
     end
 
+    @testset "FileSink" begin
+        tmp = tempname()
+        # Single file mode: deduplicates IO handles
+        sink = BazerUtils.FileSink(tmp; create_files=false)
+        @test length(sink.ios) == 4
+        @test length(unique(objectid.(sink.ios))) == 1  # all same IO
+        @test length(sink.locks) == 4
+        @test length(unique(objectid.(sink.locks))) == 1  # all same lock
+        @test all(io -> io !== stdout && io !== stderr, sink.ios)
+        close(sink)
+        rm(tmp, force=true)
+
+        # Multi file mode: separate IO handles
+        sink2 = BazerUtils.FileSink(tmp; create_files=true)
+        @test length(sink2.ios) == 4
+        @test length(unique(objectid.(sink2.ios))) == 4  # all different IO
+        @test length(unique(objectid.(sink2.locks))) == 4  # all different locks
+        close(sink2)
+        rm.(BazerUtils.get_log_filenames(tmp; create_files=true), force=true)
+
+        # close guard: closing twice doesn't error
+        sink3 = BazerUtils.FileSink(tempname(); create_files=false)
+        close(sink3)
+        @test_nowarn close(sink3)  # second close is safe
+
+        # Count mismatch throws ArgumentError
+        @test_throws ArgumentError BazerUtils.get_log_filenames(["a.log", "b.log"])
+        @test_throws ArgumentError BazerUtils.get_log_filenames(["a.log", "b.log", "c.log", "d.log", "e.log"])
+    end
+
     # -- logger with everything in one place ...
     logger_single = custom_logger(
         log_path;
