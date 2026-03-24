@@ -189,29 +189,123 @@ end
 # --------------------------------------------------------------------------------------------------
 
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
+# custom_format — dispatch hub. Called by FormatLogger callbacks.
+# ==================================================================================================
+
+"""
+    custom_format(io, fmt::LogFormat, log_record::NamedTuple; kwargs...)
+
+Format and write a log record to `io` using the given format. Generates a single
+timestamp and delegates to the appropriate `format_log` method.
+"""
+function custom_format(io, fmt::LogFormat, log_record::NamedTuple;
+        displaysize::Tuple{Int,Int}=(50,100),
+        log_date_format::AbstractString="yyyy-mm-dd",
+        log_time_format::AbstractString="HH:MM:SS",
+        shorten_path::Symbol=:relative_path)
+
+    timestamp = now()
+    format_log(io, fmt, log_record, timestamp;
+        displaysize=displaysize,
+        log_date_format=log_date_format,
+        log_time_format=log_time_format,
+        shorten_path=shorten_path)
+end
+
+
+# ==================================================================================================
+# create_demux_logger — builds the TeeLogger pipeline
+# ==================================================================================================
+
+function create_demux_logger(sink::FileSink,
+        file_loggers::Vector{Symbol},
+        module_absolute_message_filter,
+        module_specific_message_filter,
+        fmt_file::LogFormat,
+        fmt_stdout::LogFormat,
+        format_kwargs::NamedTuple;
+        cascading_loglevels::Bool=false)
+
+    logger_configs = Dict(
+        :error => (module_absolute_message_filter, Logging.Error),
+        :warn  => (module_absolute_message_filter, Logging.Warn),
+        :info  => (module_specific_message_filter, Logging.Info),
+        :debug => (module_absolute_message_filter, Logging.Debug)
+    )
+
+    logger_list = []
+
+    for (io_index, logger_key) in enumerate(file_loggers)
+        if !haskey(logger_configs, logger_key)
+            @warn "Unknown logger type: $logger_key — skipping"
+            continue
+        end
+        if io_index > length(sink.ios)
+            error("Not enough IO streams in sink for logger: $logger_key")
+        end
+
+        message_filter, log_level = logger_configs[logger_key]
+        io = sink.ios[io_index]
+        lk = sink.locks[io_index]
+
+        # Thread-safe format callback
+        format_cb = (cb_io, log_record) -> lock(lk) do
+            custom_format(cb_io, fmt_file, log_record; format_kwargs...)
+        end
+
+        inner = EarlyFilteredLogger(message_filter, FormatLogger(format_cb, io))
+
+        if cascading_loglevels
+            # Old behavior: MinLevelLogger catches this level and above
+            push!(logger_list, MinLevelLogger(inner, log_level))
+        else
+            # New behavior: exact level only
+            exact_filter = log -> log.level == log_level
+            push!(logger_list, EarlyFilteredLogger(exact_filter, inner))
+        end
+    end
+
+    # Stdout logger — always Info+, uses specific module filter, no file locking
+    stdout_format_cb = (io, log_record) -> custom_format(io, fmt_stdout, log_record;
+        format_kwargs...)
+    stdout_logger = MinLevelLogger(
+        EarlyFilteredLogger(module_specific_message_filter,
+            FormatLogger(stdout_format_cb, stdout)),
+        Logging.Info)
+    push!(logger_list, stdout_logger)
+
+    return TeeLogger(logger_list...)
+end
+
+
+# ==================================================================================================
+# custom_logger — public API
+# ==================================================================================================
+
 """
     custom_logger(filename; kw...)
 
 Set up a custom global logger with per-level file output, module filtering, and configurable formatting.
 
-When `create_log_files=true`, creates one log file per level (e.g. `filename_error.log`, `filename_warn.log`, etc.).
+When `create_log_files=true`, creates one log file per level (e.g. `filename_error.log`).
 Otherwise all levels write to the same file.
 
 # Arguments
 - `filename::AbstractString`: base name for the log files
-- `filtered_modules_specific::Union{Nothing, Vector{Symbol}}=nothing`: modules to filter out of stdout and info-level file logs only (e.g. `[:TranscodingStreams]`)
-- `filtered_modules_all::Union{Nothing, Vector{Symbol}}=nothing`: modules to filter out of all logs (e.g. `[:HTTP]`)
-- `file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug]`: which file loggers to register
-- `log_date_format::AbstractString="yyyy-mm-dd"`: date format in log timestamps
-- `log_time_format::AbstractString="HH:MM:SS"`: time format in log timestamps
-- `displaysize::Tuple{Int,Int}=(50,100)`: display size for non-string log messages
-- `log_format::Symbol=:log4j`: format for file logs (`:log4j`, `:pretty`, or `:syslog`)
-- `log_format_stdout::Symbol=:pretty`: format for stdout
-- `shorten_path::Symbol=:relative_path`: path shortening strategy for log4j format
-- `create_log_files::Bool=false`: create separate files per log level
+- `filtered_modules_specific::Union{Nothing, Vector{Symbol}}=nothing`: modules to filter from stdout and info-level file logs
+- `filtered_modules_all::Union{Nothing, Vector{Symbol}}=nothing`: modules to filter from all logs
+- `file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug]`: which levels to capture
+- `log_date_format::AbstractString="yyyy-mm-dd"`: date format in timestamps
+- `log_time_format::AbstractString="HH:MM:SS"`: time format in timestamps
+- `displaysize::Tuple{Int,Int}=(50,100)`: display size for non-string messages
+- `log_format::Symbol=:oneline`: file log format (`:pretty`, `:oneline`, `:syslog`, `:json`, `:logfmt`, `:log4j_standard`)
+- `log_format_stdout::Symbol=:pretty`: stdout format (same options)
+- `shorten_path::Symbol=:relative_path`: path shortening strategy (`:oneline` format only)
+- `cascading_loglevels::Bool=false`: when `true`, each file captures its level and above; when `false`, each file captures only its exact level
+- `create_log_files::Bool=false`: create separate files per level
 - `overwrite::Bool=false`: overwrite existing log files
-- `create_dir::Bool=false`: create the log directory if it doesn't exist
+- `create_dir::Bool=false`: create log directory if missing
 - `verbose::Bool=false`: warn about filtering non-imported modules
 
 # Example
@@ -220,125 +314,125 @@ custom_logger("/tmp/myapp";
     filtered_modules_all=[:HTTP, :TranscodingStreams],
     create_log_files=true,
     overwrite=true,
-    log_format=:log4j)
+    log_format=:oneline)
 ```
 """
 function custom_logger(
-    sink::LogSink;
-    filtered_modules_specific::Union{Nothing, Vector{Symbol}}=nothing,
-    filtered_modules_all::Union{Nothing, Vector{Symbol}}=nothing,
-    file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug],
-    log_date_format::AbstractString="yyyy-mm-dd",
-    log_time_format::AbstractString="HH:MM:SS",
-    displaysize::Tuple{Int,Int}=(50,100),
-    log_format::Symbol=:log4j, 
-    log_format_stdout::Symbol=:pretty,
-    shorten_path::Symbol=:relative_path,
-    verbose::Bool=false)
+        sink::LogSink;
+        filtered_modules_specific::Union{Nothing, Vector{Symbol}}=nothing,
+        filtered_modules_all::Union{Nothing, Vector{Symbol}}=nothing,
+        file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug],
+        log_date_format::AbstractString="yyyy-mm-dd",
+        log_time_format::AbstractString="HH:MM:SS",
+        displaysize::Tuple{Int,Int}=(50,100),
+        log_format::Symbol=:oneline,
+        log_format_stdout::Symbol=:pretty,
+        shorten_path::Symbol=:relative_path,
+        cascading_loglevels::Bool=false,
+        verbose::Bool=false)
 
-    # warning if some non imported get filtered ...
-    imported_modules = filter(names(Main, imported=true)) do x
-        x ≠ :Main && isdefined(Main, x) && typeof(getfield(Main, x)) <: Module
-    end
-    all_filters = Symbol[x for x in unique(vcat(
-        something(filtered_modules_specific, Symbol[]),
-        something(filtered_modules_all, Symbol[]))) if !isnothing(x)]
-    if !isempty(all_filters) && verbose
-        catch_nonimported = map(x -> x ∈ imported_modules, all_filters)
-        if !all(catch_nonimported)
-            @warn "Some non (directly) imported modules are being filtered ... $(join(string.(all_filters[.!catch_nonimported]), ", "))"
+    # Resolve format types (validates symbols, handles :log4j deprecation)
+    fmt_file = resolve_format(log_format)
+    fmt_stdout = resolve_format(log_format_stdout)
+
+    # Normalize file_loggers to Vector
+    file_loggers_vec = file_loggers isa Symbol ? [file_loggers] : collect(file_loggers)
+
+    # Warn about filtering non-imported modules
+    if verbose
+        imported_modules = filter(
+            x -> isdefined(Main, x) && typeof(getfield(Main, x)) <: Module && x !== :Main,
+            names(Main, imported=true))
+        all_filters = Symbol[x for x in unique(vcat(
+            something(filtered_modules_specific, Symbol[]),
+            something(filtered_modules_all, Symbol[]))) if !isnothing(x)]
+        if !isempty(all_filters)
+            missing_mods = filter(x -> x ∉ imported_modules, all_filters)
+            if !isempty(missing_mods)
+                @warn "Filtering non-imported modules: $(join(string.(missing_mods), ", "))"
+            end
         end
     end
 
-    # Create a log filter that drops messages from the given modules.
-    # Uses startswith to also catch submodules (e.g. :HTTP catches HTTP.ConnectionPool).
-    function create_module_filter(modules)
-        return function(log)
-            if isnothing(modules)
-                return true
-            end
-            module_name = string(log._module)
-            for m in modules
-                if startswith(module_name, string(m))
-                    return false
-                end
-            end
-            return true
-        end
-    end
-    module_absolute_message_filter = create_module_filter(filtered_modules_all)
-    module_specific_message_filter = create_module_filter(filtered_modules_specific)
+    # Module filters
+    module_absolute_filter = create_module_filter(filtered_modules_all)
+    module_specific_filter = create_module_filter(filtered_modules_specific)
 
+    format_kwargs = (displaysize=displaysize,
+                     log_date_format=log_date_format,
+                     log_time_format=log_time_format,
+                     shorten_path=shorten_path)
 
-    format_log_stdout = (io,log_record)->custom_format(io, log_record;
-        displaysize=displaysize,
-        log_date_format=log_date_format,
-        log_time_format=log_time_format,
-        log_format=log_format_stdout)
+    demux = create_demux_logger(sink, file_loggers_vec,
+        module_absolute_filter, module_specific_filter,
+        fmt_file, fmt_stdout, format_kwargs;
+        cascading_loglevels=cascading_loglevels)
 
-    format_log_file = (io,log_record)->custom_format(io, log_record;
-        displaysize=displaysize,
-        log_date_format=log_date_format,
-        log_time_format=log_time_format,
-        log_format=log_format,
-        shorten_path=shorten_path)
-
-    demux_logger = create_demux_logger(sink, file_loggers,
-        module_absolute_message_filter, module_specific_message_filter, format_log_file, format_log_stdout)
-
-    global_logger(demux_logger)
-
-    # Keep sink alive so the finalizer does not close its IO handles while
-    # the global logger is still using them.
+    # Keep sink alive to prevent GC from closing IO handles
     _active_sink[] = sink
 
-    return demux_logger
+    global_logger(demux)
+    return demux
 end
-# --------------------------------------------------------------------------------------------------
 
+"""
+    create_module_filter(modules) -> Function
 
-# --------------------------------------------------------------------------------------------------
-# Convenience constructor that creates appropriate sink
+Return a filter function that drops log messages from the specified modules.
+Uses `startswith` to catch submodules (e.g. `:HTTP` catches `HTTP.ConnectionPool`).
+"""
+function create_module_filter(modules)
+    return function(log)
+        isnothing(modules) && return true
+        mod = string(log._module)
+        for m in modules
+            startswith(mod, string(m)) && return false
+        end
+        return true
+    end
+end
+
+# Convenience constructor: filename or vector of filenames
 function custom_logger(
-    filename::Union{AbstractString, Vector{AbstractString}};
-    create_log_files::Bool=false,
-    overwrite::Bool=false,
-    create_dir::Bool=false,
-    file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug],
-    kwargs...)
+        filename::Union{AbstractString, Vector{<:AbstractString}};
+        create_log_files::Bool=false,
+        overwrite::Bool=false,
+        create_dir::Bool=false,
+        file_loggers::Union{Symbol, Vector{Symbol}}=[:error, :warn, :info, :debug],
+        kwargs...)
 
-    file_loggers_array = file_loggers isa Symbol ? [file_loggers] : file_loggers
+    file_loggers_array = file_loggers isa Symbol ? [file_loggers] : collect(file_loggers)
 
-    files = if filename isa Vector
-        get_log_filenames(filename; file_loggers=file_loggers_array)
-    else
+    files = if filename isa AbstractString
         get_log_filenames(filename; file_loggers=file_loggers_array, create_files=create_log_files)
+    else
+        get_log_filenames(filename; file_loggers=file_loggers_array)
     end
 
-    # create directory if needed and bool true
-    # returns an error if directory does not exist and bool false
+    # Create directories if needed
     log_dirs = unique(dirname.(files))
     missing_dirs = filter(d -> !isempty(d) && !isdir(d), log_dirs)
-    if create_dir && !isempty(missing_dirs)
-        @warn "Creating directory for logs ... $(join(missing_dirs, ", "))"
-        mkpath.(missing_dirs)
-    elseif !isempty(missing_dirs)
-        @error "Directory for logs does not exist ... $(join(missing_dirs, ", "))"
+    if !isempty(missing_dirs)
+        if create_dir
+            @warn "Creating log directories: $(join(missing_dirs, ", "))"
+            mkpath.(missing_dirs)
+        else
+            @error "Log directories do not exist: $(join(missing_dirs, ", "))"
+        end
     end
-    # Handle cleanup if needed
-    overwrite && foreach(f -> rm(f, force=true), files)
-    # Create sink
-    sink = if filename isa Vector
-        FileSink(filename; file_loggers=file_loggers_array)
-    else
+
+    overwrite && foreach(f -> rm(f, force=true), unique(files))
+
+    sink = if filename isa AbstractString
         FileSink(filename; file_loggers=file_loggers_array, create_files=create_log_files)
+    else
+        FileSink(filename; file_loggers=file_loggers_array)
     end
-    # Call main logger function
+
     custom_logger(sink; file_loggers=file_loggers, kwargs...)
 end
 
-
-# Convenience for batch mode: uses PROGRAM_FILE as the log filename base
+# Convenience for batch/script mode
 function custom_logger(; kwargs...)
     if !isempty(PROGRAM_FILE)
         logbase = splitext(abspath(PROGRAM_FILE))[1]
@@ -346,107 +440,6 @@ function custom_logger(; kwargs...)
     else
         @error "custom_logger() with no arguments requires a script context (PROGRAM_FILE is empty in the REPL)"
     end
-end
-# --------------------------------------------------------------------------------------------------
-
-
-# --------------------------------------------------------------------------------------------------
-function create_demux_logger(sink, 
-    file_loggers::Union{Symbol, Vector{Symbol}},
-    module_absolute_message_filter,
-    module_specific_message_filter,
-    format_log_file,
-    format_log_stdout)
-    
-    # Convert single symbol to vector for consistency
-    loggers_to_include = file_loggers isa Symbol ? [file_loggers] : file_loggers
-        
-    logger_configs = Dict(
-        :error => (1, module_absolute_message_filter, Logging.Error),
-        :warn  => (2, module_absolute_message_filter, Logging.Warn),
-        :info  => (3, module_specific_message_filter, Logging.Info),
-        :debug => (4, module_absolute_message_filter, Logging.Debug)
-    )
-
-    logger_list = []
-
-    io_index = 1
-    for logger_key in loggers_to_include
-        if haskey(logger_configs, logger_key)
-            if io_index > length(sink.ios)
-                error("Not enough IO streams in sink for logger: $logger_key")
-            end
-            
-            _, message_filter, log_level = logger_configs[logger_key]
-            
-            file_logger = MinLevelLogger(
-                EarlyFilteredLogger(message_filter, 
-                    FormatLogger(format_log_file, sink.ios[io_index])),
-                log_level)
-            
-            push!(logger_list, file_logger)
-            io_index += 1
-        else
-            @warn "Unknown logger type: $logger_key"
-        end
-    end
-    
-    # Always include stdout logger
-    stdout_logger = MinLevelLogger(
-        EarlyFilteredLogger(module_specific_message_filter, 
-            FormatLogger(format_log_stdout, stdout)),
-        Logging.Info)
-    
-    push!(logger_list, stdout_logger)
-    
-    # Create and return the TeeLogger
-    return TeeLogger(logger_list...)
-
-end
-# --------------------------------------------------------------------------------------------------
-
-
-# --------------------------------------------------------------------------------------------------
-# Custom format function with box-drawing characters for wrap-around effect
-# TODO should rewrite for multiple dispatch with different types for log_format
-function custom_format(io, log_record::NamedTuple;
-    displaysize::Tuple{Int,Int}=(50,100),
-    log_date_format::AbstractString="yyyy-mm-dd", 
-    log_time_format::AbstractString="HH:MM:SS",
-    log_format::Symbol=:pretty,  # available pretty or log4j
-    shorten_path::Symbol=:relative_path     # see function below tried to emulate p10k
- )
-
-    # -- format the message!!!
-    formatted_message = reformat_msg(log_record; displaysize=displaysize)
-    
-    if log_format == :pretty 
-
-        prefix_continuation_line = "│ "
-        prefix_last_line = "└ "
-
-        (first_line, message_lines) = format_pretty(log_record; 
-            log_date_format=log_date_format, log_time_format=log_time_format)
-
-        println(io, "$first_line")
-        for (index, line) in enumerate(message_lines)
-            if index < length(message_lines)
-                println(io, "$prefix_continuation_line$line")
-            else  # Last line
-                println(io, "$prefix_last_line$line")
-            end
-        end
-
-    elseif log_format == :log4j
-        log_entry = log_record |> 
-            str -> format_log4j(str, shorten_path=shorten_path) |> msg_to_singleline
-        println(io, log_entry)
-    elseif log_format == :syslog
-        log_entry = log_record |> format_syslog |> msg_to_singleline
-        println(io, log_entry)
-    end
-
-
 end
     
 
