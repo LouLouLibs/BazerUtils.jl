@@ -14,4 +14,7 @@ docs/node_modules/
 *.jl.cov
 *.jl.mem
 /lcov.info
+
+# Worktrees
+.worktrees/
 # ---------------------------------------------------------
