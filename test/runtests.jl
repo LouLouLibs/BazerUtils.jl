@@ -7,6 +7,7 @@ import LoggingExtras: ConsoleLogger, TeeLogger
 import JSON
 import CodecZlib
 import HTTP
+import Dates
 
 const testsuite = [
     "customlogger",
