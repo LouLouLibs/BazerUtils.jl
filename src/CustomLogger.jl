@@ -441,118 +441,24 @@ function custom_logger(; kwargs...)
         @error "custom_logger() with no arguments requires a script context (PROGRAM_FILE is empty in the REPL)"
     end
 end
-    
-
-# --- pretty format
-function format_pretty(log_record::NamedTuple;
-    log_date_format::AbstractString="yyyy-mm-dd", 
-    log_time_format::AbstractString="HH:MM:SS",
-    )::Tuple{AbstractString, Vector{AbstractString}}
-
-    BOLD = "\033[1m"
-    EMPH = "\033[2m"
-    RESET = "\033[0m"
-    T = now()
-
-    date = format(T, log_date_format)
-    time = format(T, log_time_format)
-    timestamp = "$BOLD$time$RESET $EMPH$date$RESET"  # Apply bold only to the time
-    log_level = log_record.level
-    level = string(log_level)
-    color = get_color(log_level)
-    module_name = log_record._module
-    file = log_record.file
-    line = log_record.line
-    source_info = " @ $module_name[$file:$line]"
-    # Prepare the first part of the message prefix
-    first_line = "┌ [$timestamp] $color$level\033[0m | $source_info"
-
-    formatted_message = reformat_msg(log_record)
-
-    message_lines = split(formatted_message, "\n")
-
-    return (first_line, message_lines)
-
-end
-
-# --- log4j format
-function format_log4j(log_record::NamedTuple; 
-    shorten_path::Symbol=:relative_path)::AbstractString
-
-    timestamp = format(now(), "yyyy-mm-dd HH:MM:SS")
-    log_level = rpad(uppercase(string(log_record.level)), 5)
-    module_name = isnothing(log_record._module) ? :unknown : nameof(log_record._module)
-    file = shorten_path_str(log_record.file; strategy=shorten_path)
-    prefix = shorten_path == :relative_path ? "[$(pwd())] " : ""
-    line = log_record.line
-    formatted_message = reformat_msg(log_record)
-
-    log_entry = "$prefix$timestamp $log_level $module_name[$file:$line] $(replace(formatted_message, "\n" => " | "))"
-    
-    return log_entry 
-
-end
-
-# --- syslog format! 
-# -----  for syslog mapping of severity! 
-const syslog_severity_map = Dict( # look at get color to get something nicer than a string call
-        "Info"  => 6,  # Informational
-        "Warn"  => 4,  # Warning
-        "Error" => 3,  # Error
-        "Debug" => 7   # Debugging
-    )
-# ----- where are the binaries!
-const julia_bin = Base.julia_cmd().exec[1]
 
 
-function format_syslog(log_record::NamedTuple)::AbstractString
+# --- Helper: colors for pretty format ---
 
-    timestamp = Dates.format(now(), ISODateTimeFormat)
-    file = log_record.file    
-    severity = get(syslog_severity_map, string(log_record.level), 6)  # Default to INFO
-    facility = 1  # User-level messages
-    pri = (facility * 8) + severity
-    hostname = gethostname()
-    pid = getpid()
-    # msg_id = haskey(log_record.metadata, "msg_id") ? log_record.metadata["msg_id"] : "-" # TODO
-    app_name = julia_bin
-        # msg_id = metadata["msg_id"] if haskey(metadata, "msg_id") else "-"
-    msg_id = "-"
-    # # Format structured data
-    # structured_data = ""
-    # if !isempty(metadata)
-    #     structured_data = "[" * join(["exp@32473 $(k)=\"$(v)\"" for (k, v) in metadata if k != "msg_id"], " ") * "]"
-    # else
-    structured_data = "-"
-    # end
-    formatted_message = reformat_msg(log_record)
-
-    # we put everything on one line for clear logging ... 
-    log_entry = "<$pri>1 $timestamp $hostname $app_name $pid $msg_id $structured_data $(replace(formatted_message, "\n" => " | "))"
-    # Print the log entry println(io, log_entry)
-    return log_entry 
-
-end
-
-# --- pretty format 
-#-- colors for pretty
 function get_color(level)
-
     RESET = "\033[0m"
     BOLD = "\033[1m"
-    # ITALIC = 
     LIGHT_BLUE = "\033[94m"
     RED = "\033[31m"
     GREEN = "\033[32m"
     YELLOW = "\033[33m"
 
-    return level == Logging.Debug ? LIGHT_BLUE :  # Use light blue for Debug
+    return level == Logging.Debug ? LIGHT_BLUE :
            level == Logging.Info  ? GREEN :
            level == Logging.Warn  ? "$YELLOW$BOLD" :
            level == Logging.Error ? "$RED$BOLD" :
-           RESET  # Default to no specific color
+           RESET
 end
-# --------------------------------------------------------------------------------------------------
 
 
 # --------------------------------------------------------------------------------------------------
@@ -587,12 +493,12 @@ julia> shorten_path_str("/home/user/documents/very_long_filename.txt", strategy=
 "/home/user/doc…ents/very_…name.txt"
 ```
 """
-function shorten_path_str(path::AbstractString; 
-    max_length::Int=40, 
+function shorten_path_str(path::AbstractString;
+    max_length::Int=40,
     strategy::Symbol=:truncate_middle
     )::AbstractString
 
-    if strategy == :no 
+    if strategy == :no
         return path
     elseif strategy == :relative_path
         return "./" * relpath(path, pwd())
@@ -606,7 +512,7 @@ function shorten_path_str(path::AbstractString;
     # Split path into components
     parts = split(path, '/')
     is_absolute = startswith(path, '/')
-    
+
     # Handle empty path or root directory
     if isempty(parts) || (length(parts) == 1 && isempty(parts[1]))
         return is_absolute ? "/" : ""
@@ -623,7 +529,7 @@ function shorten_path_str(path::AbstractString;
             result = join(shortened, "/")
             return is_absolute ? "/$result" : result
         end
-    
+
     elseif strategy == :truncate_middle
         # For each component, truncate the middle if it's too long
         function shorten_component(comp::AbstractString; max_comp_len::Int=10)
@@ -680,7 +586,7 @@ function shorten_path_str(path::AbstractString;
                 push!(shortened, prefix)
             end
         end
-        
+
         result = join(shortened, "/")
         return is_absolute ? "/$result" : result
     end
@@ -691,7 +597,7 @@ end
 # --------------------------------------------------------------------------------------------------
 
 
-# --- Constants for new format_log methods ---
+# --- Constants for format_log methods ---
 
 const SYSLOG_SEVERITY = Dict(
     Logging.Info  => 6,
@@ -807,4 +713,3 @@ function format_log(io, ::Log4jStandardFormat, log_record::NamedTuple, timestamp
 
     println(io, "$ts,$millis $level [$thread_id] $mod_name - $msg")
 end
-
