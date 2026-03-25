@@ -4,7 +4,7 @@ Utility functions for everyday Julia.
 
 ## Features
 
-- **[Custom Logger](@ref Logging)**: Configurable logging with per-level file output, module filtering, and multiple format options (`pretty`, `log4j`, `syslog`).
+- **[Custom Logger](@ref Logging)**: Configurable logging with per-level file output, module filtering, thread safety, and six format options (`pretty`, `oneline`, `json`, `logfmt`, `syslog`, `log4j_standard`).
 - **[JSON Lines](@ref "Working with JSON Lines Files")** *(deprecated)*: Read/write JSONL files. Use [`JSON.jl`](https://github.com/JuliaIO/JSON.jl) v1 with `jsonlines=true` instead.
 
 ## Installation

@@ -13,13 +13,13 @@ It is a more mature version of [`Prototypes.jl`](https://github.com/louloulibs/P
 
 The package provides:
 
-   - [`custom_logger`](#custom-logging): configurable logging with per-level file output, module filtering, and multiple format options (`pretty`, `log4j`, `syslog`)
+   - [`custom_logger`](#custom-logging): configurable logging with per-level file output, module filtering, and multiple format options (`:pretty`, `:oneline`, `:json`, `:logfmt`, `:syslog`, `:log4j_standard`)
    - ~~`read_jsonl` / `stream_jsonl` / `write_jsonl`~~: **deprecated** — use [`JSON.jl`](https://github.com/JuliaIO/JSON.jl) v1 with `jsonlines=true` instead
 
 
 ## Installation
 
-`BazerUtils.jl` is a registered package. 
+`BazerUtils.jl` is a registered package.
 You can install from the my julia registry [`loulouJL`](https://github.com/LouLouLibs/loulouJL) via the julia package manager:
 ```julia
 > using Pkg, LocalRegistry
@@ -38,29 +38,63 @@ If you don't want to add a new registry, you can install it directly from github
 
 ### Custom Logging
 
-This one is a little niche.
-I wanted to have a custom logger that would allow me to filter messages from specific modules and redirect them to different files, which I find useful to monitor long jobs in a format that is easy to read and that I can control.
-The formatter is hard-coded to what I like but I guess I could change it easily and make it an option.
+A configurable logger that lets you filter messages from specific modules and redirect them to different files, with a format that is easy to read and control.
 
-Here is an example where you can create a custom logger and redirect logging to different files.
-See the doc for more [examples](https://louloulibs.github.io/BazerUtils.jl/dev/man/logger_guide)
 ```julia
 custom_logger(
-    "./log/build_stable_sample_multiplier";                   # prefix of log-file being generated
-    file_loggers=[:warn, :debug],                             # which file logger to deploy 
+    "./log/build_stable_sample_multiplier";
+    file_loggers=[:warn, :debug],                             # which file loggers to deploy
 
-    filtered_modules_all=[:HTTP],                             # filtering messages across all loggers from specific modules
-    filtered_modules_specific=[:TranscodingStreams],          # filtering messages for stdout and info from specific modules
+    filtered_modules_all=[:HTTP],                             # filter across all loggers
+    filtered_modules_specific=[:TranscodingStreams],           # filter for stdout and info only
 
-    displaysize=(50,100),                                     # how much to show
-    log_format=:log4j,                                        # how to format the log for files
-    log_format_stdout = :pretty,                              # how to format the log for the repl
+    displaysize=(50,100),                                     # how much to show for non-string messages
+    log_format=:oneline,                                      # format for files (see formats below)
+    log_format_stdout=:pretty,                                # format for REPL
 
-    create_log_files=true,                                    # if false all logs are written to a single file    
-    overwrite=true,                                            # overwrite old logs    
-    
+    cascading_loglevels=false,                                # false = each file gets only its level
+                                                              # true  = each file gets its level and above
+
+    create_log_files=true,                                    # separate file per level
+    overwrite=true,
     );
 ```
+
+#### Log Formats
+
+| Format | Symbol | Description |
+|--------|--------|-------------|
+| **Pretty** | `:pretty` | Box-drawing + ANSI colors — default for stdout |
+| **Oneline** | `:oneline` | Single-line with timestamp, level, module, file:line — default for files |
+| **JSON** | `:json` | One JSON object per line — for log aggregation (ELK, Datadog, Loki) |
+| **logfmt** | `:logfmt` | `key=value` pairs — grep-friendly, popular with Splunk/Heroku |
+| **Syslog** | `:syslog` | RFC 5424 syslog format |
+| **Log4j Standard** | `:log4j_standard` | Apache Log4j PatternLayout — for Java tooling interop |
+
+Example output for each:
+
+```
+# :pretty (stdout default)
+┌ [08:28:08 2025-02-12] Info |  @ Main[script.jl:42]
+└ Processing batch 5 of 10
+
+# :oneline (file default)
+[/home/user/project] 2025-02-12 08:28:08 INFO  Main[./script.jl:42] Processing batch 5 of 10
+
+# :json
+{"timestamp":"2025-02-12T08:28:08","level":"INFO","module":"Main","file":"script.jl","line":42,"message":"Processing batch 5 of 10"}
+
+# :logfmt
+ts=2025-02-12T08:28:08 level=info module=Main file=script.jl line=42 msg="Processing batch 5 of 10"
+
+# :syslog
+<14>1 2025-02-12T08:28:08 hostname julia 12345 - - Processing batch 5 of 10
+
+# :log4j_standard
+2025-02-12 08:28:08,000 INFO  [1] Main - Processing batch 5 of 10
+```
+
+> **Note:** `:log4j` still works as a deprecated alias for `:oneline` and will be removed in a future version.
 
 
 ### JSON Lines (deprecated)
@@ -77,7 +111,7 @@ JSON.json("out.jsonl", data; jsonlines=true)           # write
 ## Other stuff
 
 
-See my other package 
+See my other package
   - [BazerData.jl](https://github.com/louloulibs/BazerData.jl) which groups together data wrangling functions.
   - [FinanceRoutines.jl](https://github.com/louloulibs/FinanceRoutines.jl) which is more focused and centered on working with financial data.
   - [TigerFetch.jl](https://github.com/louloulibs/TigerFetch.jl) which simplifies downloading shape files from the Census.
