@@ -8,10 +8,12 @@ import JSON
 import CodecZlib
 import HTTP
 import Dates
+import DataFrames
 
 const testsuite = [
     "customlogger",
-    "jsonlines"
+    "jsonlines",
+    "html_tables"
 ]
 
 # --------------------------------------------------------------------------------------------------
