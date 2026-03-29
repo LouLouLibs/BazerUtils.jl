@@ -261,10 +261,10 @@ Parse all HTML tables from a URL or raw HTML string into DataFrames.
 # Arguments
 - `source`: URL (starting with "http") or raw HTML string
 - `match`: optional `Regex` -- only return tables whose text content matches
-- `flatten`: controls multi-level header column names
-  - `nothing` (default): string tuple column names like "(A, a)"
-  - `:join`: join levels with "_"
-  - `:last`: last level only
+- `flatten`: controls multi-level header column names (DataFrames requires String column names)
+  - `nothing` (default): string representation of tuples, e.g. `"(A, a)"`
+  - `:join`: join levels with `"_"`, e.g. `"A_a"`
+  - `:last`: last header level only, e.g. `"a"`
 
 # Returns
 Vector of DataFrames with String/Missing columns. Empty tables are skipped.
