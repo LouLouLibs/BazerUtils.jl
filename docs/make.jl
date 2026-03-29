@@ -25,6 +25,7 @@ makedocs(
         "Home" => "index.md",
         "Manual" => [
             "man/logger_guide.md",
+            "man/read_html_tables.md",
             "man/read_jsonl.md",
         ],
         "Library" => [
