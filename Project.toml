@@ -1,6 +1,6 @@
 name = "BazerUtils"
 uuid = "36dcebb2-80bb-4116-91f4-ed9f396c4a1c"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Erik Loualiche"]
 
 [deps]

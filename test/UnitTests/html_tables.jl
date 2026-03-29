@@ -352,4 +352,27 @@ end
 
 end # Tier 4
 
+
+# ==================================================================================
+# Integration: real Wikipedia page
+# ==================================================================================
+
+@testset "Integration: Wikipedia state parks" begin
+    try
+        dfs = read_html_tables(
+            "https://en.wikipedia.org/wiki/List_of_Alabama_state_parks";
+            match=r"[Nn]ame", flatten=:last)
+        @test length(dfs) >= 1
+        df = dfs[1]
+        @test any(contains.(lowercase.(names(df)), "name"))
+        @test nrow(df) > 10
+    catch e
+        if e isa HTTP.Exceptions.StatusError || e isa Downloads.RequestError
+            @warn "Skipping Wikipedia test (network error)"
+        else
+            rethrow(e)
+        end
+    end
+end
+
 end # HTMLTables
