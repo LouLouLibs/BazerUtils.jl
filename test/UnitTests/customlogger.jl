@@ -9,7 +9,7 @@
         return unique(string.(log_paths))
     end
 
-    function close_logger(logger::TeeLogger; remove_files::Bool=false)
+    function close_logger(logger; remove_files::Bool=false)
         # Get filenames before closing
         filenames = get_log_names(logger)
 

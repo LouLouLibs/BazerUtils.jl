@@ -104,6 +104,43 @@ function logfmt_escape(s::AbstractString)::String
 end
 
 
+# --- CustomLoggerHandle: wrapper for clean REPL display ---
+
+"""
+    CustomLoggerHandle
+
+Thin wrapper around a `TeeLogger` so the REPL prints a compact summary
+instead of the full nested type tree.
+"""
+struct CustomLoggerHandle
+    logger::Any          # the underlying TeeLogger
+    sink::Any            # LogSink (kept for display info)
+    file_loggers::Vector{Symbol}
+end
+
+function Base.show(io::IO, h::CustomLoggerHandle)
+    n = length(h.file_loggers)
+    levels = join(string.(h.file_loggers), ", ")
+    if h.sink isa FileSink
+        files = unique(h.sink.files)
+        if length(files) == 1
+            print(io, "CustomLogger($(files[1]), levels=[$levels])")
+        else
+            print(io, "CustomLogger($(length(files)) files, levels=[$levels])")
+        end
+    else
+        print(io, "CustomLogger($n file loggers + stdout)")
+    end
+end
+
+# Forward property access to the underlying logger so existing code
+# that accesses .loggers etc. keeps working.
+Base.getproperty(h::CustomLoggerHandle, s::Symbol) =
+    s in fieldnames(CustomLoggerHandle) ? getfield(h, s) : getproperty(getfield(h, :logger), s)
+Base.propertynames(h::CustomLoggerHandle) =
+    (fieldnames(CustomLoggerHandle)..., propertynames(getfield(h, :logger))...)
+
+
 # --- LogSink infrastructure ---
 
 abstract type LogSink end
@@ -374,7 +411,7 @@ function custom_logger(
     _active_sink[] = sink
 
     global_logger(demux)
-    return demux
+    return CustomLoggerHandle(demux, sink, file_loggers_vec)
 end
 
 """
